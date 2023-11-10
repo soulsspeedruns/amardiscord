@@ -4,27 +4,36 @@ use regex::{Captures, Regex};
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
-struct Category {
-    name: String,
-    children: Vec<Channel>,
+pub struct Category {
+    pub name: String,
+    pub children: Vec<Channel>,
 }
 
 #[derive(Deserialize, Debug)]
-struct Channel {
-    messages: Vec<Message>,
+pub struct Channel {
+    #[serde(rename = "type")]
+    pub channel_type: u64,
+    pub name: String,
+    pub messages: Option<Vec<Message>>,
 }
 
 #[derive(Deserialize, Debug)]
-struct Message {
-    content: MessageContent,
-    username: String,
-    avatar: String,
+pub struct Message {
+    pub content: MessageContent,
+    pub username: String,
+    pub avatar: String,
     #[serde(rename = "sentAt")]
-    sent_at: DateTime<Utc>,
+    pub sent_at: DateTime<Utc>,
 }
 
 #[derive(Debug)]
-struct MessageContent(String);
+pub struct MessageContent(String);
+
+impl AsRef<str> for MessageContent {
+    fn as_ref(&self) -> &str {
+        &self.0
+    }
+}
 
 impl<'de> Deserialize<'de> for MessageContent {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -36,11 +45,11 @@ impl<'de> Deserialize<'de> for MessageContent {
 
         Ok(MessageContent(
             RE.replace_all(&s, |captures: &Captures| {
-                let ext = if &captures[0] == "a" { "gif" } else { "png" };
-                let emote_name = &captures[1];
-                let emote_id = &captures[2];
+                let ext = if &captures[1] == "a" { "gif" } else { "png" };
+                let emote_name = &captures[2];
+                let emote_id = &captures[3];
                 format!(
-                    r#"<img alt="{}" src="https://cdn.discordapp.com/emojis/{}.{}"/>"#,
+                    r#"<img class="e" alt="{}" src="https://cdn.discordapp.com/emojis/{}.{}"/>"#,
                     emote_name, emote_id, ext
                 )
             })

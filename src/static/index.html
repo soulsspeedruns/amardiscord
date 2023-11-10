@@ -2,10 +2,19 @@
 <html>
   <head>
     <script defer src="htmx.min.js"></script>
+    <script defer src="index.js"></script>
+    <link rel="stylesheet" href="index.css"/>
   </head>
   <body>
-    <div hx-get="/api/toc" hx-trigger="load">
+    <aside id="channels" hx-get="/api/toc" hx-trigger="load">
       loading...
+    </aside>
+    <div id="content">
+      <div id="content-container"
+           hx-get="/api/channel/0/0/0"
+           hx-swap="innerHTML scroll:bottom"
+           hx-trigger="intersect once">
+      </div>
     </div>
   </body>
 </html>

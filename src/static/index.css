@@ -1,0 +1,167 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;600&display=swap');
+
+/* Light Mode Variables */
+:root {
+  --color-bg: #fafaf0; /* Light gray with a hint of burlywood for the background */
+  --color-primary-text: #4a473a; /* Dark gray veering towards burlywood for primary text */
+  --color-secondary-text: #615f53; /* Medium gray with a burlywood undertone for secondary text */
+  --color-tertiary-text: #797761; /* Slightly lighter gray also leaning towards burlywood for tertiary text */
+  --color-border: #d2cfc4; /* Light gray border with a burlywood hue */
+  --color-accent1: #deb887; /* Burlywood-like color for the first accent */
+  --color-accent2: #cdaa7d; /* A slightly darker shade for the second accent */
+  --color-accent3: #e4c2a2; /* A lighter, softer shade for the third accent */
+  --color-accent4: #b0a290; /* A muted, earthy tone for the fourth accent */
+}
+
+/* Dark Mode Variables */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #35322a; /* Dark gray with a hint of burlywood for the background */
+    --color-primary-text: #dddad0; /* Light gray veering towards burlywood for primary text */
+    --color-secondary-text: #c7c3b8; /* Medium-light gray with a burlywood undertone for secondary text */
+    --color-tertiary-text: #b1ad9f; /* Even lighter gray also leaning towards burlywood for tertiary text */
+    --color-border: #504a41; /* Darker gray border with a burlywood hue */
+    --color-accent1: #deb887; /* Burlywood-like color for the first accent */
+    --color-accent2: #cdaa7d; /* A slightly darker shade for the second accent */
+    --color-accent3: #e4c2a2; /* A lighter, softer shade for the third accent */
+    --color-accent4: #b0a290; /* A muted, earthy tone for the fourth accent */
+  }
+}
+
+/* CSS Reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box; /* Ensure padding does not affect the total width or height */
+  margin: 0; /* Remove default margin */
+  padding: 0; /* Remove default padding */
+}
+
+/* Scrollbar styling */
+html {
+  scroll-behavior: smooth; /* Enables smooth scrolling for anchor links */
+  height: 100%; /* Fixes the full height for the html element */
+}
+
+body {
+  margin: 0;
+  font-family: JetBrains Mono, Arial, Helvetica, sans-serif;
+  font-weight: 300;
+  background-color: var(--color-bg);
+  color: var(--color-primary-text);
+  line-height: 1.2; /* Improves readability */
+  min-height: 100%; /* Ensures at least full viewport height */
+  overflow-x: hidden; /* Hides horizontal scrollbar if not needed */
+}
+
+/* Structure and layout */
+#channels {
+  float: left;
+  width: 25%; /* Channel takes 25% of the view width */
+  box-sizing: border-box; /* Include padding and borders in the width */
+  padding: 1em; /* Spacing inside the channels */
+  height: 100vh; /* Full height */
+  overflow-y: auto; /* Enable scrolling for overflow content */
+}
+
+#content {
+  margin-left: 25%; /* Content starts after the channels div */
+  padding: 1em; /* Spacing inside the content */
+  height: 100vh; /* Full height */
+  overflow-y: auto; /* Enable scrolling for overflow content */
+}
+
+/* Style the list elements */
+ul {
+  list-style: none;
+  padding: 0;
+}
+
+ul li {
+  margin: 0.5em 0;
+  cursor: pointer;
+}
+
+/* Style the headings */
+h2 {
+  margin-top: 0;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  #channels,
+  #content {
+    float: none;
+    width: auto;
+    margin-left: 0;
+    height: auto;
+  }
+}
+
+/* Dark theme media query */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-primary-text);
+  }
+
+  #channels {
+    border-right: 1px solid var(--color-border);
+  }
+}
+
+#channels h2 {
+  color: var(--color-accent1);
+}
+
+#channels a {
+  display: block;
+}
+
+#channels li:hover {
+  background-color: var(--color-accent4);
+  color: var(--color-bg);
+}
+
+#content ul li img.e {
+  height: 1.2em;
+  vertical-align: sub;
+}
+
+span.usr {
+  font-weight: 600;
+  color: var(--color-accent1);
+}
+
+span.time {
+  font-size: 0.7em;
+  color: var(--color-accent3);
+}
+
+span.avatar {
+  border-radius: 9999px;
+  width: 40px;
+  height: 40px;
+  text-align: center;
+  position: absolute;
+  left: 0;
+  overflow: hidden;
+  padding-top: 2px;
+}
+
+span.avatar img {
+  height: 100%;
+}
+
+#content ul li {
+  padding-left: 52px;
+  position: relative;
+}
+
+#loading-indicator {
+  display: none; /* Hidden by default */
+}
+.htmx-request #loading-indicator {
+  display: block; /* Shown when an HTMX request is in progress */
+}
+
