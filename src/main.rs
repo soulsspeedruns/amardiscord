@@ -15,81 +15,10 @@ use maud::{html, Markup, PreEscaped};
 use tokio::fs;
 use tower_http::services::ServeDir;
 use tracing::info;
-
-use amardiscord::{Category, Channel};
 use tracing_subscriber::filter::LevelFilter;
 
-#[derive(Default)]
-struct Content {
-    categories: Vec<Category>,
-    channels: Vec<Channel>,
-}
-
-async fn load_categories(path: &Path) -> Result<Vec<Category>> {
-    let path = path.join("categories");
-
-    let mut categories = Vec::new();
-
-    for i in 1.. {
-        let path = path.join(format!("{i}.json"));
-        if path.exists() {
-            let content = fs::read_to_string(path).await?;
-            let mut category: Category = serde_json::from_str(&content)?;
-
-            for channel in &mut category.children {
-                if let Some(msgs) = channel.messages.as_mut() {
-                    msgs.sort_unstable_by(|a, b| b.sent_at.cmp(&a.sent_at));
-                }
-            }
-
-            categories.push(category);
-        } else {
-            break;
-        }
-        if cfg!(debug_assertions) {
-            break;
-        }
-    }
-
-    Ok(categories)
-}
-
-async fn load_channels(path: &Path) -> Result<Vec<Channel>> {
-    let path = path.join("other_channels");
-
-    let mut entries = fs::read_dir(&path).await?;
-    let mut channels = Vec::new();
-
-    while let Some(entry) = entries.next_entry().await? {
-        let path = entry.path();
-        if path.extension().and_then(|s| s.to_str()) == Some("json") {
-            let content = fs::read_to_string(path).await?;
-            let mut channel: Channel = serde_json::from_str(&content)?;
-            if let Some(msgs) = channel.messages.as_mut() {
-                msgs.sort_by_key(|msg| msg.sent_at);
-            }
-            channels.push(channel);
-        }
-    }
-
-    Ok(channels)
-}
-
-async fn load_content() -> Result<Content> {
-    let mut entries = fs::read_dir("./data").await?;
-
-    while let Some(entry) = entries.next_entry().await? {
-        let path = entry.path();
-        if path.is_dir() {
-            return Ok(Content {
-                categories: load_categories(&path).await?,
-                channels: load_channels(&path).await?,
-            });
-        }
-    }
-
-    Ok(Default::default())
-}
+use amardiscord::db;
+use amardiscord::{Category, Channel, Content};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -108,7 +37,7 @@ async fn main() -> Result<()> {
     }
 
     info!("Loading content...");
-    let state = Arc::new(load_content().await?);
+    let state = Arc::new(db::load_content().await?);
 
     info!("Starting app...");
 

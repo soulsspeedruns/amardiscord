@@ -3,6 +3,14 @@ use once_cell::sync::Lazy;
 use regex::{Captures, Regex};
 use serde::Deserialize;
 
+pub mod db;
+
+#[derive(Default)]
+pub struct Content {
+    pub categories: Vec<Category>,
+    pub channels: Vec<Channel>,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct Category {
     pub name: String,
