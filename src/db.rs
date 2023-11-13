@@ -1,11 +1,13 @@
 use std::path::Path;
 
 use anyhow::Result;
-use rusqlite::Connection;
+use itertools::Itertools;
+use r2d2::Pool;
+use r2d2_sqlite::SqliteConnectionManager;
 use tokio::fs;
 use tracing::info;
 
-use crate::{Category, Channel, Content};
+use crate::{Category, Channel, Content, Message, MessageContent, Toc, TocCategory, TocChannel};
 
 async fn load_categories(path: &Path) -> Result<Vec<Category>> {
     let path = path.join("categories");
@@ -73,15 +75,21 @@ pub async fn load_content() -> Result<Content> {
     Ok(Default::default())
 }
 
-pub struct Database(Connection);
+pub struct Database(Pool<SqliteConnectionManager>);
 
 impl Database {
     pub fn new() -> Result<Self> {
-        Ok(Self(Connection::open("amardiscord.sqlite")?))
+        Ok(Self(
+            Pool::builder()
+                .max_size(32)
+                .build(SqliteConnectionManager::file("amardiscord.sqlite"))?,
+        ))
     }
 
-    pub async fn initialize(&mut self) -> Result<()> {
-        self.0.execute(
+    async fn initialize(&mut self) -> Result<()> {
+        let db = self.0.get()?;
+
+        db.execute(
             r#"
             CREATE TABLE IF NOT EXISTS categories (
                 category_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -91,7 +99,7 @@ impl Database {
             [],
         )?;
 
-        self.0.execute(
+        db.execute(
             r#"
             CREATE TABLE IF NOT EXISTS channels (
                 channel_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -104,7 +112,7 @@ impl Database {
             [],
         )?;
 
-        self.0.execute(
+        db.execute(
             r#"
             CREATE TABLE IF NOT EXISTS messages (
                 content TEXT NOT NULL,
@@ -118,28 +126,46 @@ impl Database {
             [],
         )?;
 
-        let categories = load_content().await?.categories;
+        db.execute(
+            r#"
+            CREATE INDEX messages_channels
+            ON messages(channel_id);
+            "#,
+            [],
+        )?;
+
+        let content = load_content().await?;
+        let mut categories = content.categories;
+        if !content.channels.is_empty() {
+            categories
+                .push(Category { name: "Other channels".to_string(), children: content.channels });
+        }
 
         for category in categories {
             info!("Inserting category \"{}\"...", category.name);
 
-            self.0.execute(r#"INSERT INTO categories (name) VALUES (?1);"#, [category.name])?;
-            let category_id = self.0.last_insert_rowid();
+            db.execute(r#"INSERT INTO categories (name) VALUES (?1);"#, [category.name])?;
+            let category_id = db.last_insert_rowid();
 
             for channel in category.children {
-                info!("Inserting channel \"{}\"...", channel.name);
-                self.0.execute("BEGIN TRANSACTION", [])?;
+                if channel.channel_type != 0 {
+                    info!("Skipping channel \"{}\"...", channel.name);
+                    continue;
+                }
 
-                self.0.execute(
+                info!("Inserting channel \"{}\"...", channel.name);
+                db.execute("BEGIN TRANSACTION", [])?;
+
+                db.execute(
                     r#"
                     INSERT INTO channels (channel_type, name, category_id)
                     VALUES (?1, ?2, ?3);
                     "#,
                     (channel.channel_type, channel.name, category_id),
                 )?;
-                let channel_id = self.0.last_insert_rowid();
+                let channel_id = db.last_insert_rowid();
 
-                let mut stmt = self.0.prepare(
+                let mut stmt = db.prepare(
                     r#"
                     INSERT INTO messages (content, username, avatar, sent_at, channel_id)
                     VALUES (?1, ?2, ?3, ?4, ?5);
@@ -156,24 +182,78 @@ impl Database {
                     ))?;
                 }
 
-                self.0.execute("COMMIT", [])?;
+                db.execute("COMMIT", [])?;
             }
         }
 
         Ok(())
     }
+
+    pub fn get_page(&self, channel_id: u64, page: u64) -> Result<Vec<Message>> {
+        const PAGE_SIZE: u64 = 100;
+
+        let db = self.0.get()?;
+
+        let mut stmt = db.prepare(
+            r#"
+            SELECT content, username, avatar, sent_at FROM messages
+            WHERE channel_id = ?1
+            LIMIT ?2 OFFSET ?3
+            "#,
+        )?;
+
+        let messages = stmt.query_map((channel_id, PAGE_SIZE, page * PAGE_SIZE), |row| {
+            Ok(Message {
+                content: MessageContent(row.get(0)?),
+                username: row.get(1)?,
+                avatar: row.get(2)?,
+                sent_at: row.get(3)?,
+            })
+        })?;
+
+        Ok(messages.collect::<rusqlite::Result<Vec<_>>>()?)
+    }
+
+    pub fn get_toc(&self) -> Result<Toc> {
+        let db = self.0.get()?;
+
+        let mut stmt = db.prepare(
+            r#"
+            SELECT 
+                categories.name as cat_name,
+                channels.channel_type,
+                channels.name as channel_name,
+                channels.channel_id
+            FROM
+                categories
+                JOIN channels
+                ON channels.category_id = categories.category_id
+            "#,
+        )?;
+
+        let channels = stmt
+            .query_map((), |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    TocChannel { channel_type: row.get(1)?, name: row.get(2)?, id: row.get(3)? },
+                ))
+            })?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+
+        let groups = channels.iter().group_by(|(name, _)| name);
+
+        let categories = groups
+            .into_iter()
+            .map(|(name, channels)| TocCategory {
+                name: name.to_string(),
+                channels: channels.map(|(_, channel)| channel.clone()).collect(),
+            })
+            .collect();
+
+        Ok(Toc { categories })
+    }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use std::path::Path;
-
-    #[tokio::test]
-    async fn test_insert() {
-        let mut database = Database::new().unwrap();
-
-        database.initialize().await.unwrap();
-    }
+pub async fn build() -> Result<()> {
+    Database::new()?.initialize().await
 }

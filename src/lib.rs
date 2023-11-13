@@ -4,6 +4,7 @@ use regex::{Captures, Regex};
 use serde::Deserialize;
 
 pub mod db;
+pub mod serve;
 
 #[derive(Default)]
 pub struct Content {
@@ -64,4 +65,22 @@ impl<'de> Deserialize<'de> for MessageContent {
             .into_owned(),
         ))
     }
+}
+
+#[derive(Default, Clone)]
+pub struct Toc {
+    pub categories: Vec<TocCategory>,
+}
+
+#[derive(Default, Clone)]
+pub struct TocCategory {
+    pub name: String,
+    pub channels: Vec<TocChannel>,
+}
+
+#[derive(Default, Clone)]
+pub struct TocChannel {
+    pub name: String,
+    pub id: u64,
+    pub channel_type: u64,
 }
