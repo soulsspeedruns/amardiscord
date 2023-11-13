@@ -2,10 +2,18 @@ use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::Result;
-use axum::{extract::Path as ExtractPath, extract::State, http::header, routing::get, Router};
+use axum::{
+    extract::Path as ExtractPath,
+    extract::State,
+    http::header,
+    response::Html,
+    routing::{get, get_service},
+    Router,
+};
 use itertools::Itertools;
 use maud::{html, Markup, PreEscaped};
 use tokio::fs;
+use tower_http::services::ServeDir;
 use tracing::info;
 
 use amardiscord::{Category, Channel};
@@ -36,6 +44,9 @@ async fn load_categories(path: &Path) -> Result<Vec<Category>> {
 
             categories.push(category);
         } else {
+            break;
+        }
+        if cfg!(debug_assertions) {
             break;
         }
     }
@@ -102,13 +113,23 @@ async fn main() -> Result<()> {
     info!("Starting app...");
 
     let app = Router::new()
-        .route("/", static_get!("./static/index.html", "text/html"))
-        .route("/index.css", static_get!("./static/index.css", "text/css"))
-        .route("/index.js", static_get!("./static/index.js", "application/javascript"))
-        .route("/htmx.min.js", static_get!("./static/htmx.min.js", "application/javascript"))
         .route("/api/toc", get(toc))
-        .route("/api/channel/:category/:channel/:page", get(channel))
-        .with_state(state);
+        .route("/api/channel/:category/:channel/:page", get(channel));
+
+    let app = if cfg!(debug_assertions) {
+        app.route(
+            "/",
+            get(|| async { Html(fs::read_to_string("src/static/index.html").await.unwrap()) }),
+        )
+        .fallback(get_service(ServeDir::new("src/static")))
+    } else {
+        app.route("/", static_get!("./static/index.html", "text/html"))
+            .route("/index.css", static_get!("./static/index.css", "text/css"))
+            .route("/index.js", static_get!("./static/index.js", "application/javascript"))
+            .route("/htmx.min.js", static_get!("./static/htmx.min.js", "application/javascript"))
+    };
+
+    let app = app.with_state(state);
 
     axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
         .serve(app.into_make_service())
@@ -199,8 +220,8 @@ async fn channel(
     html! {
         div.scroller
             hx-get=(format!("/api/channel/{category_idx}/{channel_idx}/{}", page + 1))
-            hx-trigger="intersect once delay:20ms"
-            hx-swap="beforebegin show:top" {}
+            hx-trigger="intersect once delay:200ms"
+            hx-swap="beforebegin scroll:top" {}
         ul {
             @for m in messages {
                 (m)
