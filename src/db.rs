@@ -214,6 +214,31 @@ impl Database {
         Ok(messages.collect::<rusqlite::Result<Vec<_>>>()?)
     }
 
+    // TODO: Should still be paged, need to decide on UX
+    pub fn get_all_filtered(&self, channel_id: u64, query: String) -> Result<Vec<Message>> {
+        let db = self.0.get()?;
+
+        let query_with_wildcards = format!("{}{}{}", "%", query, "%");
+        let mut stmt = db.prepare(
+            r#"
+            SELECT content, username, avatar, sent_at FROM messages
+            WHERE channel_id = ?1
+            AND (content LIKE ?2 OR username LIKE ?2)
+            "#,
+        )?;
+
+        let messages = stmt.query_map((channel_id, query_with_wildcards.as_str()), |row| {
+            Ok(Message {
+                content: MessageContent(row.get(0)?),
+                username: row.get(1)?,
+                avatar: row.get(2)?,
+                sent_at: row.get(3)?,
+            })
+        })?;
+
+        Ok(messages.collect::<rusqlite::Result<Vec<_>>>()?)
+    }
+
     pub fn get_toc(&self) -> Result<Toc> {
         let db = self.0.get()?;
 
