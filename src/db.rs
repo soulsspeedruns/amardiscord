@@ -7,6 +7,7 @@ use r2d2_sqlite::SqliteConnectionManager;
 use tokio::fs;
 use tracing::info;
 
+use crate::search::SearchQuery;
 use crate::{Category, Channel, Content, Message, MessageContent, Toc, TocCategory, TocChannel};
 
 async fn load_categories(path: &Path) -> Result<Vec<Category>> {
@@ -238,19 +239,13 @@ impl Database {
     }
 
     // TODO: Should still be paged, need to decide on UX
-    pub fn get_all_filtered(&self, channel_id: u64, query: String) -> Result<Vec<Message>> {
+    pub fn get_all_filtered(&self, search_query: SearchQuery) -> Result<Vec<Message>> {
         let db = self.0.get()?;
 
-        let query_with_wildcards = format!("{}{}{}", "%", query, "%");
-        let mut stmt = db.prepare(
-            r#"
-            SELECT content, username, avatar, sent_at FROM messages
-            WHERE channel_id = ?1
-            AND (content LIKE ?2 OR username LIKE ?2)
-            "#,
-        )?;
+        let (query, params) = search_query.build()?;
+        let mut stmt = db.prepare(&query)?;
 
-        let messages = stmt.query_map((channel_id, query_with_wildcards.as_str()), |row| {
+        let messages = stmt.query_map(rusqlite::params_from_iter(params), |row| {
             Ok(Message {
                 content: MessageContent(row.get(0)?),
                 username: row.get(1)?,
@@ -281,10 +276,11 @@ impl Database {
 
         let channels = stmt
             .query_map((), |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    TocChannel { channel_type: row.get(1)?, name: row.get(2)?, id: row.get(3)? },
-                ))
+                Ok((row.get::<_, String>(0)?, TocChannel {
+                    channel_type: row.get(1)?,
+                    name: row.get(2)?,
+                    id: row.get(3)?,
+                }))
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
 

@@ -1,28 +1,19 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use axum::{
-    extract::Path as ExtractPath,
-    extract::Query as ExtractQuery,
-    extract::State,
-    http::header,
-    response::Html,
-    routing::{get, get_service},
-    Router,
-};
+use axum::extract::{Path as ExtractPath, Query as ExtractQuery, State};
+use axum::http::header;
+use axum::response::Html;
+use axum::routing::{get, get_service};
+use axum::Router;
 use itertools::Itertools;
 use maud::{html, Markup, PreEscaped};
-use serde::Deserialize;
 use tokio::{fs, task};
 use tower_http::services::ServeDir;
 use tracing::info;
 
 use crate::db::Database;
-
-#[derive(Deserialize)]
-struct SearchQuery {
-    query: String,
-}
+use crate::search::SearchQuery;
 
 pub async fn serve() -> Result<()> {
     macro_rules! static_get {
@@ -39,7 +30,7 @@ pub async fn serve() -> Result<()> {
     let app = Router::new()
         .route("/api/toc", get(toc))
         .route("/api/channel/:channel/:page", get(channel))
-        .route("/api/search/:channel", get(search));  // TODO: Make global later
+        .route("/api/search", get(search));
 
     let app = if cfg!(debug_assertions) {
         app.route(
@@ -144,8 +135,8 @@ async fn channel(
     html! {
         div id="search-bar" hx-swap-oob="true" {
             input
-                type="search" name="query" placeholder="Start typing to search..."
-                hx-get=(format!("/api/search/{channel_id}"))
+                type="search" name="content" placeholder="Start typing to search..."
+                hx-get=(format!("/api/search"))
                 hx-trigger="input changed delay:500ms, query" hx-target="#content-container" hx-swap="innerHTML show:bottom" {}
         }
 
@@ -154,7 +145,7 @@ async fn channel(
             hx-get=(format!("/api/channel/{channel_id}/{}", page + 1))
             hx-trigger="intersect once delay:200ms"
             hx-swap="beforebegin scroll:top" {}
-    
+
             ul id="messages" {
                 @for m in messages {
                     (m)
@@ -166,12 +157,11 @@ async fn channel(
 
 async fn search(
     State(db): State<Arc<Database>>,
-    ExtractPath(channel_id): ExtractPath<u64>,
     ExtractQuery(query): ExtractQuery<SearchQuery>,
 ) -> Markup {
     let db = Arc::clone(&db);
 
-    let messages = match task::spawn_blocking(move || db.get_all_filtered(channel_id, query.query)).await {
+    let messages = match task::spawn_blocking(move || db.get_all_filtered(query)).await {
         Ok(Ok(messages)) => messages,
         Ok(Err(e)) => return html! { (format!("Error retrieving messages: {e}")) },
         Err(e) => return html! { (format!("Error retrieving messages: {e}")) },
@@ -191,6 +181,8 @@ async fn search(
                 span.usr { (&username) }
                 " "
                 span.time { (&first_msg.sent_at) }
+                " "
+                button.go { "Go to message" }
             }
             li.msg {
                 (PreEscaped(&first_msg.content))

@@ -4,6 +4,7 @@ use regex::{Captures, Regex};
 use serde::Deserialize;
 
 pub mod db;
+pub mod search;
 pub mod serve;
 
 #[derive(Default)]
