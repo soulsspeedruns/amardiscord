@@ -89,6 +89,7 @@ impl Database {
     async fn initialize(&mut self) -> Result<()> {
         let db = self.0.get()?;
 
+        // Create categories table
         db.execute(
             r#"
             CREATE TABLE IF NOT EXISTS categories (
@@ -99,6 +100,7 @@ impl Database {
             [],
         )?;
 
+        // Create channels table
         db.execute(
             r#"
             CREATE TABLE IF NOT EXISTS channels (
@@ -112,6 +114,7 @@ impl Database {
             [],
         )?;
 
+        // Create messages table
         db.execute(
             r#"
             CREATE TABLE IF NOT EXISTS messages (
@@ -126,10 +129,20 @@ impl Database {
             [],
         )?;
 
+        // Create message/channel index
         db.execute(
             r#"
             CREATE INDEX messages_channels
             ON messages(channel_id);
+            "#,
+            [],
+        )?;
+
+        // Create full-text search table
+        db.execute(
+            r#"
+            CREATE VIRTUAL TABLE messages_fts
+            USING FTS5(content, username, avatar, messages_rk);
             "#,
             [],
         )?;
@@ -185,6 +198,16 @@ impl Database {
                 db.execute("COMMIT", [])?;
             }
         }
+
+        // Populate full-text search table
+        info!("Populating FTS table...");
+        db.execute(
+            r#"
+            INSERT INTO messages_fts (content, username, avatar, messages_rk)
+            SELECT content, username, avatar, rowid FROM messages;
+            "#,
+            [],
+        )?;
 
         Ok(())
     }
