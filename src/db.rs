@@ -238,8 +238,7 @@ impl Database {
         Ok(messages.collect::<rusqlite::Result<Vec<_>>>()?)
     }
 
-    // TODO: Should still be paged, need to decide on UX
-    pub fn get_all_filtered(&self, search_query: SearchQuery) -> Result<Vec<Message>> {
+    pub fn get_search(&self, search_query: SearchQuery) -> Result<Vec<Message>> {
         let db = self.0.get()?;
 
         let (query, params) = search_query.build()?;
