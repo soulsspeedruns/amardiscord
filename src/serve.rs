@@ -161,7 +161,7 @@ async fn search(
 ) -> Markup {
     let db = Arc::clone(&db);
 
-    let messages = match task::spawn_blocking(move || db.get_all_filtered(query)).await {
+    let messages = match task::spawn_blocking(move || db.get_search(query)).await {
         Ok(Ok(messages)) => messages,
         Ok(Err(e)) => return html! { (format!("Error retrieving messages: {e}")) },
         Err(e) => return html! { (format!("Error retrieving messages: {e}")) },
