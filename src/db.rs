@@ -7,6 +7,7 @@ use r2d2_sqlite::SqliteConnectionManager;
 use tokio::fs;
 use tracing::info;
 
+use crate::search::SearchQuery;
 use crate::{Category, Channel, Content, Message, MessageContent, Toc, TocCategory, TocChannel};
 
 async fn load_categories(path: &Path) -> Result<Vec<Category>> {
@@ -89,6 +90,7 @@ impl Database {
     async fn initialize(&mut self) -> Result<()> {
         let db = self.0.get()?;
 
+        // Create categories table
         db.execute(
             r#"
             CREATE TABLE IF NOT EXISTS categories (
@@ -99,6 +101,7 @@ impl Database {
             [],
         )?;
 
+        // Create channels table
         db.execute(
             r#"
             CREATE TABLE IF NOT EXISTS channels (
@@ -112,6 +115,7 @@ impl Database {
             [],
         )?;
 
+        // Create messages table
         db.execute(
             r#"
             CREATE TABLE IF NOT EXISTS messages (
@@ -126,10 +130,20 @@ impl Database {
             [],
         )?;
 
+        // Create message/channel index
         db.execute(
             r#"
             CREATE INDEX messages_channels
             ON messages(channel_id);
+            "#,
+            [],
+        )?;
+
+        // Create full-text search table
+        db.execute(
+            r#"
+            CREATE VIRTUAL TABLE messages_fts
+            USING FTS5(content, username, avatar, messages_rk);
             "#,
             [],
         )?;
@@ -186,6 +200,16 @@ impl Database {
             }
         }
 
+        // Populate full-text search table
+        info!("Populating FTS table...");
+        db.execute(
+            r#"
+            INSERT INTO messages_fts (content, username, avatar, messages_rk)
+            SELECT content, username, avatar, rowid FROM messages;
+            "#,
+            [],
+        )?;
+
         Ok(())
     }
 
@@ -203,6 +227,24 @@ impl Database {
         )?;
 
         let messages = stmt.query_map((channel_id, PAGE_SIZE, page * PAGE_SIZE), |row| {
+            Ok(Message {
+                content: MessageContent(row.get(0)?),
+                username: row.get(1)?,
+                avatar: row.get(2)?,
+                sent_at: row.get(3)?,
+            })
+        })?;
+
+        Ok(messages.collect::<rusqlite::Result<Vec<_>>>()?)
+    }
+
+    pub fn get_search(&self, search_query: SearchQuery) -> Result<Vec<Message>> {
+        let db = self.0.get()?;
+
+        let (query, params) = search_query.build()?;
+        let mut stmt = db.prepare(&query)?;
+
+        let messages = stmt.query_map(rusqlite::params_from_iter(params), |row| {
             Ok(Message {
                 content: MessageContent(row.get(0)?),
                 username: row.get(1)?,
@@ -233,10 +275,11 @@ impl Database {
 
         let channels = stmt
             .query_map((), |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    TocChannel { channel_type: row.get(1)?, name: row.get(2)?, id: row.get(3)? },
-                ))
+                Ok((row.get::<_, String>(0)?, TocChannel {
+                    channel_type: row.get(1)?,
+                    name: row.get(2)?,
+                    id: row.get(3)?,
+                }))
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
 

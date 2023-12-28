@@ -6,13 +6,14 @@
     <link rel="stylesheet" href="index.css"/>
   </head>
   <body>
+    <div id="search-bar" hx-swap-oob="true"></div>
     <aside id="channels" hx-get="/api/toc" hx-trigger="load">
       loading...
     </aside>
     <div id="content">
       <div id="content-container"
            hx-get="/api/channel/1/0"
-           hx-swap="innerHTML show:bottom"
+           hx-swap="outerHTML show:bottom"
            hx-trigger="intersect once">
       </div>
     </div>
