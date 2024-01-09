@@ -6,7 +6,7 @@ use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use tokio::fs;
 
-use crate::search::SearchQuery;
+use crate::search::{SearchQuery, SearchResult};
 use crate::{Category, Channel, Content, Message, MessageContent, Toc, TocCategory, TocChannel};
 
 mod init;
@@ -109,29 +109,23 @@ impl Database {
             init::insert_category(category, &db)?;
         }
 
-        // Populate full-text search table
-        init::populate_fts(&db)?;
+        // Cache expensive queries.
+        init::cache(&db)?;
 
         Ok(())
     }
 
-    pub fn go_to_message(&self, channel_id: u64, message_rowid: u64) -> Result<Vec<Message>> {
+    pub fn go_to_message(&self, message_rowid: u64) -> Result<(u64, u64)> {
         let db = self.0.get()?;
 
-        let page = db.query_row(
+        Ok(db.query_row(
             r#"
-            SELECT (COUNT(*) - 1) / ?1 FROM messages
-            WHERE sent_at <= (
-                SELECT timestamp FROM messages
-                WHERE channel_id = ?2 AND message_rowid = ?3
-            );
+            SELECT channel_id, page FROM messages_pages
+            WHERE messages_rowid = ?1
             "#,
-            (PAGE_SIZE, channel_id, message_rowid),
-            |row| row.get(0),
-        )?;
-
-        drop(db);
-        self.get_page(channel_id, page)
+            [message_rowid],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )?)
     }
 
     pub fn get_page(&self, channel_id: u64, page: u64) -> Result<Vec<Message>> {
@@ -157,20 +151,14 @@ impl Database {
         Ok(messages.collect::<rusqlite::Result<Vec<_>>>()?)
     }
 
-    pub fn get_search(&self, search_query: SearchQuery) -> Result<Vec<Message>> {
+    pub fn get_search(&self, search_query: SearchQuery) -> Result<Vec<SearchResult>> {
         let db = self.0.get()?;
 
         let (query, params) = search_query.build()?;
         let mut stmt = db.prepare(&query)?;
 
-        let messages = stmt.query_map(rusqlite::params_from_iter(params), |row| {
-            Ok(Message {
-                content: MessageContent(row.get(0)?),
-                username: row.get(1)?,
-                avatar: row.get(2)?,
-                sent_at: row.get(3)?,
-            })
-        })?;
+        let messages =
+            stmt.query_map(rusqlite::params_from_iter(params), SearchResult::from_row)?;
 
         Ok(messages.collect::<rusqlite::Result<Vec<_>>>()?)
     }

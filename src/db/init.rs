@@ -2,6 +2,7 @@ use anyhow::Result;
 use rusqlite::Connection;
 use tracing::info;
 
+use crate::db::PAGE_SIZE;
 use crate::{Category, Channel, Message};
 
 pub(crate) fn insert_messages(
@@ -68,7 +69,7 @@ pub(crate) fn insert_category(category: Category, db: &Connection) -> Result<()>
     Ok(())
 }
 
-pub(crate) fn populate_fts(db: &Connection) -> Result<()> {
+pub(crate) fn cache(db: &Connection) -> Result<()> {
     info!("Populating FTS table...");
     db.execute(
         r#"
@@ -76,6 +77,21 @@ pub(crate) fn populate_fts(db: &Connection) -> Result<()> {
         SELECT content, username, avatar, rowid FROM messages;
         "#,
         [],
+    )?;
+
+    info!("Caching page numbers...");
+    db.execute(
+        r#"
+        INSERT INTO messages_pages (page, messages_rowid, channel_id)
+        SELECT (
+            ROW_NUMBER() OVER (
+                PARTITION BY channel_id
+                ORDER BY sent_at DESC
+            )
+        ) / ?1, messages.rowid, messages.channel_id
+        FROM messages;
+        "#,
+        [PAGE_SIZE],
     )?;
 
     Ok(())
