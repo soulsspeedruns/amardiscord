@@ -54,20 +54,28 @@ body {
   overflow-x: hidden; /* Hides horizontal scrollbar if not needed */
 }
 
+#search-bar {
+  width: 100%;
+  height: 3em;  /* TODO: Turn into constant */
+  display: flex;
+  justify-content: right;
+  align-items: center;
+}
+
 /* Structure and layout */
 #channels {
   float: left;
   width: 25%; /* Channel takes 25% of the view width */
   box-sizing: border-box; /* Include padding and borders in the width */
   padding: 1em; /* Spacing inside the channels */
-  height: 100vh; /* Full height */
+  height: calc(100vh - 3em); /* Full height */
   overflow-y: auto; /* Enable scrolling for overflow content */
 }
 
 #content {
   margin-left: 25%; /* Content starts after the channels div */
   padding: 1em; /* Spacing inside the content */
-  height: 100vh; /* Full height */
+  height: calc(100vh - 3em); /* Full height */
   overflow-y: auto; /* Enable scrolling for overflow content */
 }
 
