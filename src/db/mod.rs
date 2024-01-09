@@ -175,10 +175,11 @@ impl Database {
 
         let channels = stmt
             .query_map((), |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    TocChannel { channel_type: row.get(1)?, name: row.get(2)?, id: row.get(3)? },
-                ))
+                Ok((row.get::<_, String>(0)?, TocChannel {
+                    channel_type: row.get(1)?,
+                    name: row.get(2)?,
+                    id: row.get(3)?,
+                }))
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
 
