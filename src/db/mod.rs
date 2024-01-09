@@ -5,10 +5,11 @@ use itertools::Itertools;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
 use tokio::fs;
-use tracing::info;
 
 use crate::search::SearchQuery;
 use crate::{Category, Channel, Content, Message, MessageContent, Toc, TocCategory, TocChannel};
+
+mod init;
 
 async fn load_categories(path: &Path) -> Result<Vec<Category>> {
     let path = path.join("categories");
@@ -90,64 +91,10 @@ impl Database {
     async fn initialize(&mut self) -> Result<()> {
         let db = self.0.get()?;
 
-        // Create categories table
-        db.execute(
-            r#"
-            CREATE TABLE IF NOT EXISTS categories (
-                category_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL
-            );
-            "#,
-            [],
-        )?;
+        // Initialize database
+        init::initialize(&db)?;
 
-        // Create channels table
-        db.execute(
-            r#"
-            CREATE TABLE IF NOT EXISTS channels (
-                channel_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                channel_type INTEGER NOT NULL,
-                name TEXT,
-                category_id INTEGER NOT NULL,
-                FOREIGN KEY(category_id) REFERENCES categories(category_id)
-            );
-            "#,
-            [],
-        )?;
-
-        // Create messages table
-        db.execute(
-            r#"
-            CREATE TABLE IF NOT EXISTS messages (
-                content TEXT NOT NULL,
-                username TEXT NOT NULL,
-                avatar TEXT NOT NULL,
-                sent_at TEXT NOT NULL,
-                channel_id INTEGER NOT NULL,
-                FOREIGN KEY(channel_id) REFERENCES channels(channel_id)
-            );
-            "#,
-            [],
-        )?;
-
-        // Create message/channel index
-        db.execute(
-            r#"
-            CREATE INDEX messages_channels
-            ON messages(channel_id);
-            "#,
-            [],
-        )?;
-
-        // Create full-text search table
-        db.execute(
-            r#"
-            CREATE VIRTUAL TABLE messages_fts
-            USING FTS5(content, username, avatar, messages_rowid);
-            "#,
-            [],
-        )?;
-
+        // Load content
         let content = load_content().await?;
         let mut categories = content.categories;
         if !content.channels.is_empty() {
@@ -155,60 +102,13 @@ impl Database {
                 .push(Category { name: "Other channels".to_string(), children: content.channels });
         }
 
+        // Insert categories
         for category in categories {
-            info!("Inserting category \"{}\"...", category.name);
-
-            db.execute(r#"INSERT INTO categories (name) VALUES (?1);"#, [category.name])?;
-            let category_id = db.last_insert_rowid();
-
-            for channel in category.children {
-                if channel.channel_type != 0 {
-                    info!("Skipping channel \"{}\"...", channel.name);
-                    continue;
-                }
-
-                info!("Inserting channel \"{}\"...", channel.name);
-                db.execute("BEGIN TRANSACTION", [])?;
-
-                db.execute(
-                    r#"
-                    INSERT INTO channels (channel_type, name, category_id)
-                    VALUES (?1, ?2, ?3);
-                    "#,
-                    (channel.channel_type, channel.name, category_id),
-                )?;
-                let channel_id = db.last_insert_rowid();
-
-                let mut stmt = db.prepare(
-                    r#"
-                    INSERT INTO messages (content, username, avatar, sent_at, channel_id)
-                    VALUES (?1, ?2, ?3, ?4, ?5);
-                    "#,
-                )?;
-
-                for message in channel.messages.unwrap_or_default() {
-                    stmt.execute((
-                        message.content.as_ref(),
-                        message.username,
-                        message.avatar,
-                        message.sent_at,
-                        channel_id,
-                    ))?;
-                }
-
-                db.execute("COMMIT", [])?;
-            }
+            init::insert_category(category, &db)?;
         }
 
         // Populate full-text search table
-        info!("Populating FTS table...");
-        db.execute(
-            r#"
-            INSERT INTO messages_fts (content, username, avatar, messages_rowid)
-            SELECT content, username, avatar, rowid FROM messages;
-            "#,
-            [],
-        )?;
+        init::populate_fts(&db)?;
 
         Ok(())
     }
@@ -275,11 +175,10 @@ impl Database {
 
         let channels = stmt
             .query_map((), |row| {
-                Ok((row.get::<_, String>(0)?, TocChannel {
-                    channel_type: row.get(1)?,
-                    name: row.get(2)?,
-                    id: row.get(3)?,
-                }))
+                Ok((
+                    row.get::<_, String>(0)?,
+                    TocChannel { channel_type: row.get(1)?, name: row.get(2)?, id: row.get(3)? },
+                ))
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
 
