@@ -82,6 +82,6 @@ pub(crate) fn populate_fts(db: &Connection) -> Result<()> {
 }
 
 pub(crate) fn initialize(db: &Connection) -> Result<()> {
-    db.execute(include_str!("migrations/init.sql"), [])?;
+    db.execute_batch(include_str!("migrations/init.sql"))?;
     Ok(())
 }

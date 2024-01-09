@@ -22,7 +22,7 @@ impl SearchQuery {
             dedent!(
                 r#"
                 SELECT messages.content, messages.username, messages.avatar, messages.sent_at
-                FROM messages_fts JOIN messages ON messages_fts.messages_rk = messages.rowid
+                FROM messages_fts JOIN messages ON messages_fts.messages_rowid = messages.rowid
                 WHERE
                 "#
             )
