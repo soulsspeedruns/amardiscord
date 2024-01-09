@@ -11,6 +11,8 @@ use crate::{Category, Channel, Content, Message, MessageContent, Toc, TocCategor
 
 mod init;
 
+const PAGE_SIZE: u64 = 100;
+
 async fn load_categories(path: &Path) -> Result<Vec<Category>> {
     let path = path.join("categories");
 
@@ -113,9 +115,26 @@ impl Database {
         Ok(())
     }
 
-    pub fn get_page(&self, channel_id: u64, page: u64) -> Result<Vec<Message>> {
-        const PAGE_SIZE: u64 = 100;
+    pub fn go_to_message(&self, channel_id: u64, message_rowid: u64) -> Result<Vec<Message>> {
+        let db = self.0.get()?;
 
+        let page = db.query_row(
+            r#"
+            SELECT (COUNT(*) - 1) / ?1 FROM messages
+            WHERE sent_at <= (
+                SELECT timestamp FROM messages
+                WHERE channel_id = ?2 AND message_rowid = ?3
+            );
+            "#,
+            (PAGE_SIZE, channel_id, message_rowid),
+            |row| row.get(0),
+        )?;
+
+        drop(db);
+        self.get_page(channel_id, page)
+    }
+
+    pub fn get_page(&self, channel_id: u64, page: u64) -> Result<Vec<Message>> {
         let db = self.0.get()?;
 
         let mut stmt = db.prepare(
