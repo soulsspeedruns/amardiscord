@@ -143,7 +143,7 @@ impl Database {
         db.execute(
             r#"
             CREATE VIRTUAL TABLE messages_fts
-            USING FTS5(content, username, avatar, messages_rk);
+            USING FTS5(content, username, avatar, messages_rowid);
             "#,
             [],
         )?;
@@ -204,7 +204,7 @@ impl Database {
         info!("Populating FTS table...");
         db.execute(
             r#"
-            INSERT INTO messages_fts (content, username, avatar, messages_rk)
+            INSERT INTO messages_fts (content, username, avatar, messages_rowid)
             SELECT content, username, avatar, rowid FROM messages;
             "#,
             [],
