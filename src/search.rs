@@ -33,8 +33,10 @@ impl SearchQuery {
             params.push(format!("*\"{username}\"*"));
         }
 
-        writeln!(query, r#"messages_fts.content MATCH ?{};"#, params.len() + 1)?;
+        writeln!(query, r#"messages_fts.content MATCH ?{}"#, params.len() + 1)?;
         params.push(fts_query(self.content));
+
+        writeln!(query, r#"ORDER BY messages.sent_at DESC;"#)?;
 
         Ok((query, params))
     }
