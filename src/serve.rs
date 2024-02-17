@@ -199,7 +199,11 @@ async fn search(
         let SearchResult { message_rowid, message, .. } = search_results.next().unwrap();
 
         html! {
-            div.msg-container {
+            div."msg-container clickable"
+                hx-get=(format!("/api/message_page/{}", message_rowid))
+                hx-target="#content-container"
+                hx-swap="outerHTML show:bottom"
+            {
                 li.username {
                     span.avatar {
                         img alt="" src=(&message.avatar) {}
@@ -209,9 +213,6 @@ async fn search(
                     span.time { (&message.sent_at) }
                     " "
                     button.jump-btn
-                        hx-get=(format!("/api/message_page/{}", message_rowid))
-                        hx-target="#content-container"
-                        hx-swap="outerHTML show:bottom"
                     {
                         "Jump"
                     }

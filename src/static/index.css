@@ -188,6 +188,14 @@ span.avatar img {
   display: none; /* Hidden until message is hovered over */
 }
 
+.jump-btn:hover {
+  color: white;
+}
+
+.clickable {
+  cursor: pointer;
+}
+
 .msg-container {
   min-height: 3em;  /* Some messages appear to have no content (images?)*/
 }
