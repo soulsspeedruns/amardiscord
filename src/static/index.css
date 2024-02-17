@@ -54,12 +54,17 @@ body {
   overflow-x: hidden; /* Hides horizontal scrollbar if not needed */
 }
 
+a {
+  cursor: pointer;
+}
+
 #search-bar {
   width: 100%;
   height: 3em;  /* TODO: Turn into constant */
   display: flex;
   justify-content: right;
   align-items: center;
+  padding-right: 1em;
 }
 
 /* Structure and layout */
@@ -87,7 +92,6 @@ ul {
 
 ul li {
   margin: 0.5em 0;
-  cursor: pointer;
 }
 
 /* Style the headings */
@@ -169,7 +173,25 @@ span.avatar img {
 #loading-indicator {
   display: none; /* Hidden by default */
 }
+
 .htmx-request #loading-indicator {
   display: block; /* Shown when an HTMX request is in progress */
 }
 
+.jump-btn {
+  cursor: pointer;
+  background-color: rgba(0, 0, 0, 0.75);
+  border: none;
+  border-radius: 0.5em;
+  padding: 0.3em;
+  color: whitesmoke;
+  display: none; /* Hidden until message is hovered over */
+}
+
+.msg-container {
+  min-height: 3em;  /* Some messages appear to have no content (images?)*/
+}
+
+.msg-container:hover .jump-btn {
+  display: inline;
+}

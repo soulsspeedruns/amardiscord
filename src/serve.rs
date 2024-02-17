@@ -25,7 +25,7 @@ pub async fn serve() -> Result<()> {
     info!("Loading content...");
     let state = Arc::new(Database::new().unwrap());
 
-    info!("Starting app...");
+    info!("Starting app on http://localhost:3000");
 
     let app = Router::new()
         .route("/api/toc", get(toc))
@@ -114,20 +114,24 @@ async fn channel(
         let first_msg = messages.next().unwrap();
 
         html! {
-            li.username {
-                span.avatar {
-                    img alt="" src=(&first_msg.avatar) {}
+            div.msg-container {
+                li.username {
+                    span.avatar {
+                        img alt="" src=(&first_msg.avatar) {}
+                    }
+                    span.usr { (&username) }
+                    " "
+                    span.time { (&first_msg.sent_at) }
                 }
-                span.usr { (&username) }
-                " "
-                span.time { (&first_msg.sent_at) }
-            }
-            li.msg {
-                (PreEscaped(&first_msg.content))
-            }
-            @for msg in messages {
+
                 li.msg {
-                    (PreEscaped(&msg.content))
+                    (PreEscaped(&first_msg.content))
+                }
+
+                @for msg in messages {
+                    li.msg {
+                        (PreEscaped(&msg.content))
+                    }
                 }
             }
         }
@@ -195,28 +199,32 @@ async fn search(
         let SearchResult { message_rowid, message, .. } = search_results.next().unwrap();
 
         html! {
-            li.username {
-                span.avatar {
-                    img alt="" src=(&message.avatar) {}
+            div.msg-container {
+                li.username {
+                    span.avatar {
+                        img alt="" src=(&message.avatar) {}
+                    }
+                    span.usr { (&username) }
+                    " "
+                    span.time { (&message.sent_at) }
+                    " "
+                    button.jump-btn
+                        hx-get=(format!("/api/message_page/{}", message_rowid))
+                        hx-target="#content-container"
+                        hx-swap="outerHTML show:bottom"
+                    {
+                        "Jump"
+                    }
                 }
-                span.usr { (&username) }
-                " "
-                span.time { (&message.sent_at) }
-                " "
-                button.go
-                    hx-get=(format!("/api/message_page/{}", message_rowid))
-                    hx-target="#content-container"
-                    hx-swap="outerHTML show:bottom"
-                {
-                    "Go to message"
-                }
-            }
-            li.msg {
-                (PreEscaped(&message.content))
-            }
-            @for search_result in search_results {
+
                 li.msg {
-                    (PreEscaped(&search_result.message.content))
+                    (PreEscaped(&message.content))
+                }
+
+                @for search_result in search_results {
+                    li.msg {
+                        (PreEscaped(&search_result.message.content))
+                    }
                 }
             }
         }
