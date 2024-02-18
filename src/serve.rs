@@ -138,15 +138,6 @@ async fn channel(
     });
 
     html! {
-        div id="search-bar" hx-swap-oob="true" {
-            input
-                type="search" name="content" placeholder="Start typing to search..."
-                hx-get=(format!("/api/search"))
-                hx-trigger="input changed delay:500ms, query"
-                hx-target="#content-container"
-                hx-swap="innerHTML show:bottom" {}
-        }
-
         div id="content-container" {
             div.scroller
                 hx-get=(format!("/api/channel/{channel_id}/{}", page + 1))
@@ -212,7 +203,7 @@ async fn search(
                     " "
                     span.time { (&message.sent_at) }
                     " "
-                    button.jump-btn
+                    span.jump-btn
                     {
                         "Jump"
                     }

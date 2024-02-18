@@ -5,17 +5,26 @@
     <script defer src="index.js"></script>
     <link rel="stylesheet" href="index.css"/>
   </head>
+
   <body>
-    <div id="search-bar" hx-swap-oob="true"></div>
+    <div id="search-bar" hx-swap-oob="true">
+      <input type="search" name="content" placeholder="Start typing to search..."
+            hx-get="/api/search" hx-trigger="input changed delay:500ms, query"
+            hx-target="#content-container" hx-swap="innerHTML show:bottom">
+      </input>
+    </div>
+
     <aside id="channels" hx-get="/api/toc" hx-trigger="load">
       loading...
     </aside>
+
     <div id="content">
       <div id="content-container"
-           hx-get="/api/channel/1/0"
-           hx-swap="outerHTML show:bottom"
-           hx-trigger="intersect once">
+          hx-get="/api/channel/1/0"
+          hx-swap="outerHTML show:bottom"
+          hx-trigger="intersect once">
       </div>
     </div>
+
   </body>
 </html>
