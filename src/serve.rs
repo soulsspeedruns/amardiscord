@@ -13,7 +13,7 @@ use tower_http::services::ServeDir;
 use tracing::info;
 
 use crate::db::Database;
-use crate::search::SearchQuery;
+use crate::search::{SearchQuery, SearchResult};
 
 pub async fn serve() -> Result<()> {
     macro_rules! static_get {
@@ -25,10 +25,11 @@ pub async fn serve() -> Result<()> {
     info!("Loading content...");
     let state = Arc::new(Database::new().unwrap());
 
-    info!("Starting app...");
+    info!("Starting app on http://localhost:3000");
 
     let app = Router::new()
         .route("/api/toc", get(toc))
+        .route("/api/message_page/:rowid", get(message_page))
         .route("/api/channel/:channel/:page", get(channel))
         .route("/api/search", get(search));
 
@@ -113,38 +114,35 @@ async fn channel(
         let first_msg = messages.next().unwrap();
 
         html! {
-            li.username {
-                span.avatar {
-                    img alt="" src=(&first_msg.avatar) {}
+            div.msg-container {
+                li.username {
+                    span.avatar {
+                        img alt="" src=(&first_msg.avatar) {}
+                    }
+                    span.usr { (&username) }
+                    " "
+                    span.time { (&first_msg.sent_at) }
                 }
-                span.usr { (&username) }
-                " "
-                span.time { (&first_msg.sent_at) }
-            }
-            li.msg {
-                (PreEscaped(&first_msg.content))
-            }
-            @for msg in messages {
+
                 li.msg {
-                    (PreEscaped(&msg.content))
+                    (PreEscaped(&first_msg.content))
+                }
+
+                @for msg in messages {
+                    li.msg {
+                        (PreEscaped(&msg.content))
+                    }
                 }
             }
         }
     });
 
     html! {
-        div id="search-bar" hx-swap-oob="true" {
-            input
-                type="search" name="content" placeholder="Start typing to search..."
-                hx-get=(format!("/api/search"))
-                hx-trigger="input changed delay:500ms, query" hx-target="#content-container" hx-swap="innerHTML show:bottom" {}
-        }
-
         div id="content-container" {
             div.scroller
-            hx-get=(format!("/api/channel/{channel_id}/{}", page + 1))
-            hx-trigger="intersect once delay:200ms"
-            hx-swap="beforebegin scroll:top" {}
+                hx-get=(format!("/api/channel/{channel_id}/{}", page + 1))
+                hx-trigger="intersect once delay:200ms"
+                hx-swap="beforebegin scroll:top" {}
 
             ul id="messages" {
                 @for m in messages {
@@ -155,41 +153,70 @@ async fn channel(
     }
 }
 
+async fn message_page(
+    State(db): State<Arc<Database>>,
+    ExtractPath(rowid): ExtractPath<u64>,
+) -> Markup {
+    let (channel_id, page) = match task::spawn_blocking({
+        let db = Arc::clone(&db);
+        move || db.go_to_message(rowid)
+    })
+    .await
+    {
+        Ok(Ok(x)) => x,
+        Ok(Err(e)) => return html! { (format!("Error retrieving page: {e}")) },
+        Err(e) => return html! { (format!("Error retrieving page: {e}")) },
+    };
+
+    channel(State(db), ExtractPath((channel_id, page))).await
+}
+
 async fn search(
     State(db): State<Arc<Database>>,
     ExtractQuery(query): ExtractQuery<SearchQuery>,
 ) -> Markup {
     let db = Arc::clone(&db);
 
-    let messages = match task::spawn_blocking(move || db.get_search(query)).await {
-        Ok(Ok(messages)) => messages,
-        Ok(Err(e)) => return html! { (format!("Error retrieving messages: {e}")) },
-        Err(e) => return html! { (format!("Error retrieving messages: {e}")) },
+    let search_results = match task::spawn_blocking(move || db.get_search(query)).await {
+        Ok(Ok(search_results)) => search_results,
+        Ok(Err(e)) => return html! { (format!("Error retrieving search results: {e}")) },
+        Err(e) => return html! { (format!("Error retrieving search results: {e}")) },
     };
 
-    let grouped = messages.iter().rev().group_by(|msg| &msg.username);
+    let grouped = search_results.iter().rev().group_by(|msg| &msg.message.username);
 
-    let messages = grouped.into_iter().map(|(username, messages)| {
-        let mut messages = messages.into_iter();
-        let first_msg = messages.next().unwrap();
+    let messages = grouped.into_iter().map(|(username, search_results)| {
+        let mut search_results = search_results.into_iter();
+        let SearchResult { message_rowid, message, .. } = search_results.next().unwrap();
 
         html! {
-            li.username {
-                span.avatar {
-                    img alt="" src=(&first_msg.avatar) {}
+            div."msg-container clickable"
+                hx-get=(format!("/api/message_page/{}", message_rowid))
+                hx-target="#content-container"
+                hx-swap="outerHTML show:bottom"
+            {
+                li.username {
+                    span.avatar {
+                        img alt="" src=(&message.avatar) {}
+                    }
+                    span.usr { (&username) }
+                    " "
+                    span.time { (&message.sent_at) }
+                    " "
+                    span.jump-btn
+                    {
+                        "Jump"
+                    }
                 }
-                span.usr { (&username) }
-                " "
-                span.time { (&first_msg.sent_at) }
-                " "
-                button.go { "Go to message" }
-            }
-            li.msg {
-                (PreEscaped(&first_msg.content))
-            }
-            @for msg in messages {
+
                 li.msg {
-                    (PreEscaped(&msg.content))
+                    (PreEscaped(&message.content))
+                }
+
+                @for search_result in search_results {
+                    li.msg {
+                        (PreEscaped(&search_result.message.content))
+                    }
                 }
             }
         }

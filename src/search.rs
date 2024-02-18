@@ -2,8 +2,32 @@ use std::fmt::Write;
 
 use anyhow::Result;
 use itertools::Itertools;
+use rusqlite::Row;
 use serde::Deserialize;
 use textwrap_macros::dedent;
+
+use crate::{Message, MessageContent};
+
+pub struct SearchResult {
+    pub message_rowid: u64,
+    pub channel_id: u64,
+    pub message: Message,
+}
+
+impl SearchResult {
+    pub fn from_row(row: &Row) -> Result<Self, rusqlite::Error> {
+        Ok(Self {
+            message_rowid: row.get(5)?,
+            channel_id: row.get(4)?,
+            message: Message {
+                content: MessageContent(row.get(0)?),
+                username: row.get(1)?,
+                avatar: row.get(2)?,
+                sent_at: row.get(3)?,
+            },
+        })
+    }
+}
 
 #[derive(Deserialize)]
 pub struct SearchQuery {
@@ -21,7 +45,10 @@ impl SearchQuery {
             "{}",
             dedent!(
                 r#"
-                SELECT messages.content, messages.username, messages.avatar, messages.sent_at
+                SELECT
+                    messages.content, messages.username,
+                    messages.avatar, messages.sent_at,
+                    messages.channel_id, messages.rowid
                 FROM messages_fts JOIN messages ON messages_fts.messages_rowid = messages.rowid
                 WHERE
                 "#

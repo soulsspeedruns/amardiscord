@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS channels (
 
 -- Create messages table.
 CREATE TABLE IF NOT EXISTS messages (
+    rowid INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     content TEXT NOT NULL,
     username TEXT NOT NULL,
     avatar TEXT NOT NULL,
@@ -30,3 +31,11 @@ ON messages(channel_id);
 -- Create full-text search table.
 CREATE VIRTUAL TABLE messages_fts
 USING FTS5(content, username, avatar, messages_rowid);
+
+-- Create mapping between messages and channel pages.
+CREATE TABLE IF NOT EXISTS messages_pages (
+    messages_rowid INTEGER NOT NULL PRIMARY KEY,
+    channel_id INTEGER NOT NULL,
+    page INTEGER NOT NULL,
+    FOREIGN KEY(messages_rowid) REFERENCES messages(rowid)
+);
