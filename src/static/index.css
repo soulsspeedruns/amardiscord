@@ -67,6 +67,10 @@ a {
   padding-right: 1em;
 }
 
+#search-bar > input {
+  padding: 0.1em 0 0.1em 0.3em;
+}
+
 /* Structure and layout */
 #channels {
   float: left;
@@ -183,7 +187,8 @@ span.avatar img {
   background-color: rgba(0, 0, 0, 0.75);
   border: none;
   border-radius: 0.5em;
-  padding: 0.3em;
+  padding: 0.2em 0.3em;
+  font-size: 75%;
   color: whitesmoke;
   display: none; /* Hidden until message is hovered over */
 }
