@@ -34,6 +34,7 @@ async fn load_categories(path: &Path) -> Result<Vec<Category>> {
         } else {
             break;
         }
+
         if cfg!(debug_assertions) {
             break;
         }
@@ -44,10 +45,13 @@ async fn load_categories(path: &Path) -> Result<Vec<Category>> {
 
 async fn load_channels(path: &Path) -> Result<Vec<Channel>> {
     let path = path.join("other_channels");
-
-    let mut entries = fs::read_dir(&path).await?;
     let mut channels = Vec::new();
 
+    if !path.exists() {
+        return Ok(channels);
+    }
+
+    let mut entries = fs::read_dir(&path).await?;
     while let Some(entry) = entries.next_entry().await? {
         let path = entry.path();
         if path.extension().and_then(|s| s.to_str()) == Some("json") {
@@ -56,6 +60,7 @@ async fn load_channels(path: &Path) -> Result<Vec<Channel>> {
             if let Some(msgs) = channel.messages.as_mut() {
                 msgs.sort_by_key(|msg| msg.sent_at);
             }
+
             channels.push(channel);
         }
     }
