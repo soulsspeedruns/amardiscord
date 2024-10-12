@@ -10,7 +10,7 @@
     <div id="search-bar" hx-swap-oob="true">
       <input type="search" name="content" placeholder="Start typing to search..."
             hx-get="/api/search" hx-trigger="input changed delay:500ms, query"
-            hx-target="#content-container" hx-swap="innerHTML show:bottom">
+            hx-target="#content" hx-swap="innerHTML show:bottom">
       </input>
     </div>
 
@@ -19,9 +19,9 @@
     </aside>
 
     <div id="content">
-      <div id="content-container"
+      <div
           hx-get="/api/channel/1/0"
-          hx-swap="innerHTML show:bottom"
+          hx-swap="outerHTML show:bottom"
           hx-trigger="intersect once">
       </div>
     </div>

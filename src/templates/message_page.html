@@ -6,9 +6,9 @@
       <span class="usr">{{ username }}</span>
       <span class="time">{{ first_message.sent_at }}</span>
     </li>
-    <li class="msg">{{ first_message.content.as_ref() }}</li>
+    <li class="msg">{{ first_message.content|escape("none") }}</li>
     {% for msg in messages %}
-    <li class="msg">{{ msg.content.as_ref() }}</li>
+    <li class="msg">{{ msg.content|escape("none") }}</li>
     {% endfor %}
   </ul>
 </div>

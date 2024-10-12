@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use chrono::{DateTime, Utc};
 use once_cell::sync::Lazy;
 use regex::{Captures, Regex};
@@ -43,6 +45,12 @@ pub struct MessageContent(String);
 impl AsRef<str> for MessageContent {
     fn as_ref(&self) -> &str {
         &self.0
+    }
+}
+
+impl Display for MessageContent {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
