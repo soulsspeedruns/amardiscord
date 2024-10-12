@@ -14,7 +14,7 @@ use tracing::info;
 
 use crate::db::Database;
 use crate::search::{SearchQuery, SearchResult};
-use crate::templates::TocTemplate;
+use crate::templates::{MessagePageTemplate, TocTemplate};
 
 pub async fn serve() -> Result<()> {
     macro_rules! static_get {
@@ -70,77 +70,30 @@ async fn toc(State(db): State<Arc<Database>>) -> impl IntoResponse {
 async fn channel(
     State(db): State<Arc<Database>>,
     ExtractPath((channel_id, page)): ExtractPath<(u64, u64)>,
-) -> Markup {
+) -> Html<String> {
     let db = Arc::clone(&db);
 
-    let messages = match task::spawn_blocking(move || db.get_page(channel_id, page)).await {
-        Ok(Ok(messages)) => messages,
-        Ok(Err(e)) => return html! { (format!("Error retrieving messages: {e}")) },
-        Err(e) => return html! { (format!("Error retrieving messages: {e}")) },
-    };
-
-    let grouped = messages.iter().rev().group_by(|msg| &msg.username);
-
-    let messages = grouped.into_iter().map(|(username, messages)| {
-        let mut messages = messages.into_iter();
-        let first_msg = messages.next().unwrap();
-
-        html! {
-            div.msg-container {
-                li.username {
-                    span.avatar {
-                        img alt="" src=(&first_msg.avatar) {}
-                    }
-                    span.usr { (&username) }
-                    " "
-                    span.time { (&first_msg.sent_at) }
-                }
-
-                li.msg {
-                    (PreEscaped(&first_msg.content))
-                }
-
-                @for msg in messages {
-                    li.msg {
-                        (PreEscaped(&msg.content))
-                    }
-                }
-            }
-        }
-    });
-
-    html! {
-        div id="content-container" {
-            div.scroller
-                hx-get=(format!("/api/channel/{channel_id}/{}", page + 1))
-                hx-trigger="intersect once delay:200ms"
-                hx-swap="beforebegin scroll:top" {}
-
-            ul id="messages" {
-                @for m in messages {
-                    (m)
-                }
-            }
-        }
+    match task::spawn_blocking(move || db.get_page(channel_id, page)).await {
+        Ok(Ok(messages)) => Html(MessagePageTemplate::render(&messages)),
+        Ok(Err(e)) => Html(format!("Error retrieving messages: {e}")),
+        Err(e) => Html(format!("Error retrieving messages: {e}")),
     }
 }
 
 async fn message_page(
     State(db): State<Arc<Database>>,
     ExtractPath(rowid): ExtractPath<u64>,
-) -> Markup {
-    let (channel_id, page) = match task::spawn_blocking({
+) -> impl IntoResponse {
+    match task::spawn_blocking({
         let db = Arc::clone(&db);
         move || db.go_to_message(rowid)
     })
     .await
     {
-        Ok(Ok(x)) => x,
-        Ok(Err(e)) => return html! { (format!("Error retrieving page: {e}")) },
-        Err(e) => return html! { (format!("Error retrieving page: {e}")) },
-    };
-
-    channel(State(db), ExtractPath((channel_id, page))).await
+        Ok(Ok((channel_id, page))) => channel(State(db), ExtractPath((channel_id, page))).await,
+        Ok(Err(e)) => Html(format!("Error retrieving page: {e}")),
+        Err(e) => Html(format!("Error retrieving page: {e}")),
+    }
 }
 
 async fn search(
@@ -175,10 +128,7 @@ async fn search(
                     " "
                     span.time { (&message.sent_at) }
                     " "
-                    span.jump-btn
-                    {
-                        "Jump"
-                    }
+                    span.jump-btn { "Jump" }
                 }
 
                 li.msg {

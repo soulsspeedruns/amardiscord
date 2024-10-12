@@ -1,0 +1,21 @@
+{#
+    //         div.scroller
+    //             hx-get=(format!("/api/channel/{channel_id}/{}", page + 1))
+    //             hx-trigger="intersect once delay:200ms"
+    //             hx-swap="beforebegin scroll:top" {}
+#}
+{% for MessageGroup { username, first_message, messages } in message_groups %}
+<div class="msg-container">
+  <ul id="messages">
+    <li class="username">
+      <span class="avatar"><img alt="" src="{{ first_message.avatar }}"/></span>
+      <span class="usr">{{ username }}</span>
+      <span class="time">{{ first_message.sent_at }}</span>
+    </li>
+    <li class="msg">{{ first_message.content.as_ref() }}</li>
+    {% for msg in messages %}
+    <li class="msg">{{ msg.content.as_ref() }}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endfor %}
