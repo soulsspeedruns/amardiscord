@@ -6,6 +6,7 @@ use serde::Deserialize;
 pub mod db;
 pub mod search;
 pub mod serve;
+pub mod templates;
 
 #[derive(Default)]
 pub struct Content {

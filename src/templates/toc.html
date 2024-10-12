@@ -1,0 +1,16 @@
+{% for category in toc.categories %}
+<nav>
+  <h2>{{ category.name }}</h2>
+  <ul>
+    {% for channel in category.channels %}
+    <li>
+      <a hx-get="/api/channel/{{ channel.id }}/0"
+         hx-target="#content"
+         hx-swap="outerHTML show:bottom">
+        {{ channel.name }}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</nav>
+{% endfor %}

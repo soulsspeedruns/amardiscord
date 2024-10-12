@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use axum::extract::{Path as ExtractPath, Query as ExtractQuery, State};
 use axum::http::header;
-use axum::response::Html;
+use axum::response::{Html, IntoResponse};
 use axum::routing::{get, get_service};
 use axum::Router;
 use itertools::Itertools;
@@ -14,6 +14,7 @@ use tracing::info;
 
 use crate::db::Database;
 use crate::search::{SearchQuery, SearchResult};
+use crate::templates::TocTemplate;
 
 pub async fn serve() -> Result<()> {
     macro_rules! static_get {
@@ -56,42 +57,13 @@ pub async fn serve() -> Result<()> {
     Ok(())
 }
 
-async fn toc(State(db): State<Arc<Database>>) -> Markup {
+async fn toc(State(db): State<Arc<Database>>) -> impl IntoResponse {
     let db = Arc::clone(&db);
 
-    let toc = match task::spawn_blocking(move || db.get_toc()).await {
-        Ok(Ok(toc)) => toc,
-        Ok(Err(e)) => return html! { (format!("Error retrieving table of contents: {e:?}")) },
-        Err(e) => return html! { (format!("Error retrieving table of contents: {e:?}")) },
-    };
-
-    let categories = toc.categories.into_iter().map(|category| {
-        let channels = category.channels.into_iter();
-        html! {
-            nav {
-                h2 {
-                    (&category.name)
-                }
-                ul {
-                    @for channel in channels {
-                        li {
-                            a hx-get=(format!("/api/channel/{}/0", channel.id))
-                              hx-target="#content-container"
-                              hx-swap="outerHTML show:bottom"
-                            {
-                                (channel.name)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    html! {
-        @for category in categories {
-            (category)
-        }
+    match task::spawn_blocking(move || db.get_toc()).await {
+        Ok(Ok(toc)) => Html(TocTemplate::render(&toc)),
+        Ok(Err(e)) => Html(format!("Error retrieving table of contents: {e:?}")),
+        Err(e) => Html(format!("Error retrieving table of contents: {e:?}")),
     }
 }
 
