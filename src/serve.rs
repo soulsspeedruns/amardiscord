@@ -3,18 +3,16 @@ use std::sync::Arc;
 use anyhow::Result;
 use axum::extract::{Path as ExtractPath, Query as ExtractQuery, State};
 use axum::http::header;
-use axum::response::{Html, IntoResponse};
+use axum::response::Html;
 use axum::routing::{get, get_service};
 use axum::Router;
-use itertools::Itertools;
-use maud::{html, Markup, PreEscaped};
 use tokio::{fs, task};
 use tower_http::services::ServeDir;
 use tracing::info;
 
 use crate::db::Database;
-use crate::search::{SearchQuery, SearchResult};
-use crate::templates::{MessagePageTemplate, TocTemplate};
+use crate::search::SearchQuery;
+use crate::templates::{MessagePageTemplate, SearchTemplate, TocTemplate};
 
 pub async fn serve() -> Result<()> {
     macro_rules! static_get {
@@ -57,7 +55,7 @@ pub async fn serve() -> Result<()> {
     Ok(())
 }
 
-async fn toc(State(db): State<Arc<Database>>) -> impl IntoResponse {
+async fn toc(State(db): State<Arc<Database>>) -> Html<String> {
     let db = Arc::clone(&db);
 
     match task::spawn_blocking(move || db.get_toc()).await {
@@ -83,7 +81,7 @@ async fn channel(
 async fn message_page(
     State(db): State<Arc<Database>>,
     ExtractPath(rowid): ExtractPath<u64>,
-) -> impl IntoResponse {
+) -> Html<String> {
     match task::spawn_blocking({
         let db = Arc::clone(&db);
         move || db.go_to_message(rowid)
@@ -99,56 +97,12 @@ async fn message_page(
 async fn search(
     State(db): State<Arc<Database>>,
     ExtractQuery(query): ExtractQuery<SearchQuery>,
-) -> Markup {
+) -> Html<String> {
     let db = Arc::clone(&db);
 
-    let search_results = match task::spawn_blocking(move || db.get_search(query)).await {
-        Ok(Ok(search_results)) => search_results,
-        Ok(Err(e)) => return html! { (format!("Error retrieving search results: {e}")) },
-        Err(e) => return html! { (format!("Error retrieving search results: {e}")) },
-    };
-
-    let grouped = search_results.iter().rev().group_by(|msg| &msg.message.username);
-
-    let messages = grouped.into_iter().map(|(username, search_results)| {
-        let mut search_results = search_results.into_iter();
-        let SearchResult { message_rowid, message, .. } = search_results.next().unwrap();
-
-        html! {
-            div."msg-container clickable"
-                hx-get=(format!("/api/message_page/{}", message_rowid))
-                hx-target="#content-container"
-                hx-swap="outerHTML show:bottom"
-            {
-                li.username {
-                    span.avatar {
-                        img alt="" src=(&message.avatar) {}
-                    }
-                    span.usr { (&username) }
-                    " "
-                    span.time { (&message.sent_at) }
-                    " "
-                    span.jump-btn { "Jump" }
-                }
-
-                li.msg {
-                    (PreEscaped(&message.content))
-                }
-
-                @for search_result in search_results {
-                    li.msg {
-                        (PreEscaped(&search_result.message.content))
-                    }
-                }
-            }
-        }
-    });
-
-    html! {
-        ul id="messages" {
-            @for m in messages {
-                (m)
-            }
-        }
+    match task::spawn_blocking(move || db.get_search(query)).await {
+        Ok(Ok(search_results)) => Html(SearchTemplate::render(&search_results)),
+        Ok(Err(e)) => Html(format!("Error retrieving search results: {e}")),
+        Err(e) => Html(format!("Error retrieving search results: {e}")),
     }
 }

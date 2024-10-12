@@ -6,7 +6,7 @@
     <li>
       <a hx-get="/api/channel/{{ channel.id }}/0"
          hx-target="#content"
-         hx-swap="outerHTML show:bottom">
+         hx-swap="innerHTML show:bottom">
         {{ channel.name }}
       </a>
     </li>

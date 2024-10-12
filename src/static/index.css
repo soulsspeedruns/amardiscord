@@ -201,10 +201,10 @@ span.avatar img {
   cursor: pointer;
 }
 
-.msg-container {
+.message-container {
   min-height: 3em;  /* Some messages appear to have no content (images?)*/
 }
 
-.msg-container:hover .jump-btn {
+.message-container:hover .jump-btn {
   display: inline;
 }
