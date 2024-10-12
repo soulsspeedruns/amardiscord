@@ -51,6 +51,7 @@ dependencies = [
  "anyhow",
  "askama",
  "askama_axum",
+ "askama_escape",
  "axum",
  "chrono",
  "clap",

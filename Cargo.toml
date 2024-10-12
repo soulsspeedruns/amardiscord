@@ -7,6 +7,7 @@ edition = "2021"
 anyhow = "1.0.75"
 askama = { version = "0.12.1", features = ["with-axum"] }
 askama_axum = "0.4.0"
+askama_escape = "0.10.3"
 axum = "0.6.20"
 chrono = { version = "0.4.31", default-features = false, features = ["serde"] }
 clap = { version = "4.4.8", features = ["derive"] }

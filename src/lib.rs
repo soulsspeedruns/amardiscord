@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use askama::Html;
+use askama_escape::Escaper;
 use chrono::{DateTime, Utc};
 use once_cell::sync::Lazy;
 use regex::{Captures, Regex};
@@ -54,16 +56,30 @@ impl Display for MessageContent {
     }
 }
 
+// This deserialization implementation is going to get used only when building the initial
+// SQLite database. It will first deserialize its input as a string, then escape the HTML entities,
+// then replace the (now escaped; see regex below) instances of emote tags with the equivalent
+// HTML `img` element.
+//
+// Discord emote tags are of the form `<a:FrankerZ:12345678>`. If the `a` character in the first
+// field is present, the emote is an animated gif and `.gif` should be used as an extension,
+// otherwise the emote is a static `.png`.
+//
+// There are other Discord specific tags such as localized time, of the form `<t:timestamp:R>`.
+// They are not currently supported.
 impl<'de> Deserialize<'de> for MessageContent {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"<(a?):(\w+):(\d+)>").unwrap());
-        let s = String::deserialize(deserializer)?;
+        static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"&lt;(a?):(\w+):(\d+)&gt;").unwrap());
+
+        let input = String::deserialize(deserializer)?;
+        let mut escaped = String::new();
+        Html.write_escaped(&mut escaped, &input).unwrap();
 
         Ok(MessageContent(
-            RE.replace_all(&s, |captures: &Captures| {
+            RE.replace_all(&escaped, |captures: &Captures| {
                 let ext = if &captures[1] == "a" { "gif" } else { "png" };
                 let emote_name = &captures[2];
                 let emote_id = &captures[3];
