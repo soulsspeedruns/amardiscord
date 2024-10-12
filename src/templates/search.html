@@ -1,34 +1,3 @@
-{#
-ul id=messages {
-  div."msg-container clickable"
-      hx-get=(format!("/api/message_page/{}", message_rowid))
-      hx-target="#content-container"
-      hx-swap="outerHTML show:bottom"
-  {
-      li.username {
-          span.avatar {
-              img alt="" src=(&message.avatar) {}
-          }
-          span.usr { (&username) }
-          " "
-          span.time { (&message.sent_at) }
-          " "
-          span.jump-btn { "Jump" }
-      }
-
-      li.msg {
-          (PreEscaped(&message.content))
-      }
-
-      @for search_result in search_results {
-          li.msg {
-              (PreEscaped(&search_result.message.content))
-          }
-      }
-  }
-}
-#}
-
 <ul class="messages">
 {% for SearchResultGroup { username, first_search_result, search_results } in search_result_groups %}
   <li class="username">

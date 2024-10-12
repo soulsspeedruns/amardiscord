@@ -1,9 +1,3 @@
-{#
-    //         div.scroller
-    //             hx-get=(format!("/api/channel/{channel_id}/{}", page + 1))
-    //             hx-trigger="intersect once delay:200ms"
-    //             hx-swap="beforebegin scroll:top" {}
-#}
 {% for MessageGroup { username, first_message, messages } in message_groups %}
 <div class="messages-container">
   <ul class="messages">
