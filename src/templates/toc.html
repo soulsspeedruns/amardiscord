@@ -4,9 +4,9 @@
   <ul>
     {% for channel in category.channels %}
     <li>
-      <a hx-get="/api/channel/{{ channel.id }}/0"
+      <a hx-get="/api/channel/{{ channel.id }}/0?direction=up"
          hx-target="#content"
-         hx-swap="innerHTML show:bottom">
+         hx-swap="innerHTML scroll:bottom swap:33ms">
         {{ channel.name }}
       </a>
     </li>

@@ -56,17 +56,18 @@ impl Display for MessageContent {
     }
 }
 
-// This deserialization implementation is going to get used only when building the initial
-// SQLite database. It will first deserialize its input as a string, then escape the HTML entities,
-// then replace the (now escaped; see regex below) instances of emote tags with the equivalent
-// HTML `img` element.
+// This deserialization implementation is going to get used only when building
+// the initial SQLite database. It will first deserialize its input as a string,
+// then escape the HTML entities, then replace the (now escaped; see regex
+// below) instances of emote tags with the equivalent HTML `img` element.
 //
-// Discord emote tags are of the form `<a:FrankerZ:12345678>`. If the `a` character in the first
-// field is present, the emote is an animated gif and `.gif` should be used as an extension,
-// otherwise the emote is a static `.png`.
+// Discord emote tags are of the form `<a:FrankerZ:12345678>`. If the `a`
+// character in the first field is present, the emote is an animated gif and
+// `.gif` should be used as an extension, otherwise the emote is a static
+// `.png`.
 //
-// There are other Discord specific tags such as localized time, of the form `<t:timestamp:R>`.
-// They are not currently supported.
+// There are other Discord specific tags such as localized time, of the form
+// `<t:timestamp:R>`. They are not currently supported.
 impl<'de> Deserialize<'de> for MessageContent {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -109,4 +110,14 @@ pub struct TocChannel {
     pub name: String,
     pub id: u64,
     pub channel_type: u64,
+}
+
+#[derive(Deserialize, Default, Clone, Copy)]
+#[serde(rename_all = "lowercase")]
+pub enum ScrollDirection {
+    Up,
+    Down,
+    Both,
+    #[default]
+    Unspecified,
 }

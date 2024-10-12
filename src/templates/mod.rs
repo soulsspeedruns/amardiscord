@@ -2,7 +2,7 @@ use askama::Template;
 use itertools::Itertools;
 
 use crate::search::SearchResult;
-use crate::{Message, Toc};
+use crate::{Message, ScrollDirection, Toc};
 
 #[derive(Template)]
 #[template(path = "toc.html")]
@@ -26,10 +26,18 @@ struct MessageGroup<'a> {
 #[template(path = "message_page.html")]
 pub struct MessagePageTemplate<'a> {
     message_groups: Vec<MessageGroup<'a>>,
+    channel_id: u64,
+    page: u64,
+    direction: ScrollDirection,
 }
 
 impl MessagePageTemplate<'_> {
-    pub fn render(messages: &[Message]) -> String {
+    pub fn render(
+        messages: &[Message],
+        channel_id: u64,
+        page: u64,
+        direction: ScrollDirection,
+    ) -> String {
         MessagePageTemplate {
             message_groups: messages
                 .iter()
@@ -42,6 +50,9 @@ impl MessagePageTemplate<'_> {
                     MessageGroup { username, first_message, messages }
                 })
                 .collect(),
+            channel_id,
+            page,
+            direction,
         }
         .render()
         .unwrap_or_else(|e| e.to_string())

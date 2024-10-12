@@ -1,3 +1,10 @@
+{% let direction = direction %}
+{% if matches!(direction, ScrollDirection::Up | ScrollDirection::Both) %}
+<div class="scroller"
+  hx-get="/api/channel/{{ channel_id }}/{{ page + 1 }}?direction=up"
+  hx-trigger="intersect once threshold:1.0 settle:200ms"
+  hx-swap="outerHTML scroll:top"></div>
+{% endif %}
 {% for MessageGroup { username, first_message, messages } in message_groups %}
 <div class="messages-container">
   <ul class="messages">
@@ -13,3 +20,9 @@
   </ul>
 </div>
 {% endfor %}
+{% if matches!(direction, ScrollDirection::Down | ScrollDirection::Both) && page > 0 %}
+<div class="scroller"
+  hx-get="/api/channel/{{ channel_id }}/{{ page - 1 }}?direction=down"
+  hx-trigger="intersect once threshold:1.0 delay:200ms settle:200ms"
+  hx-swap="outerHTML scroll:bottom"></div>
+{% endif %}
