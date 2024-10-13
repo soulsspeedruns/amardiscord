@@ -7,7 +7,10 @@ use r2d2_sqlite::SqliteConnectionManager;
 use tokio::fs;
 
 use crate::search::{SearchQuery, SearchResult};
-use crate::{Category, Channel, Content, Message, MessageContent, Toc, TocCategory, TocChannel};
+use crate::{
+    Category, Channel, ChannelCategory, ChannelList, ChannelListEntry, Content, Message,
+    MessageContent,
+};
 
 mod init;
 
@@ -168,7 +171,7 @@ impl Database {
         Ok(messages.collect::<rusqlite::Result<Vec<_>>>()?)
     }
 
-    pub fn get_toc(&self) -> Result<Toc> {
+    pub fn get_channel_list(&self) -> Result<ChannelList> {
         let db = self.0.get()?;
 
         let mut stmt = db.prepare(
@@ -187,11 +190,14 @@ impl Database {
 
         let channels = stmt
             .query_map((), |row| {
-                Ok((row.get::<_, String>(0)?, TocChannel {
-                    channel_type: row.get(1)?,
-                    name: row.get(2)?,
-                    id: row.get(3)?,
-                }))
+                Ok((
+                    row.get::<_, String>(0)?,
+                    ChannelListEntry {
+                        channel_type: row.get(1)?,
+                        name: row.get(2)?,
+                        id: row.get(3)?,
+                    },
+                ))
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
 
@@ -199,13 +205,13 @@ impl Database {
 
         let categories = groups
             .into_iter()
-            .map(|(name, channels)| TocCategory {
+            .map(|(name, channels)| ChannelCategory {
                 name: name.to_string(),
                 channels: channels.map(|(_, channel)| channel.clone()).collect(),
             })
             .collect();
 
-        Ok(Toc { categories })
+        Ok(ChannelList { categories })
     }
 }
 

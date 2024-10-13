@@ -13,7 +13,7 @@ use tracing::info;
 
 use crate::db::Database;
 use crate::search::SearchQuery;
-use crate::templates::{MessagePageTemplate, SearchTemplate, TocTemplate};
+use crate::templates::{ChannelListTemplate, MessagePageTemplate, SearchTemplate};
 use crate::ScrollDirection;
 
 pub async fn serve() -> Result<()> {
@@ -29,7 +29,7 @@ pub async fn serve() -> Result<()> {
     info!("Starting app on http://localhost:3000");
 
     let app = Router::new()
-        .route("/api/toc", get(toc))
+        .route("/api/channel_list", get(channel_list))
         .route("/api/message_page/:rowid", get(message_page))
         .route("/api/channel/:channel/:page", get(channel))
         .route("/api/search", get(search));
@@ -57,11 +57,11 @@ pub async fn serve() -> Result<()> {
     Ok(())
 }
 
-async fn toc(State(db): State<Arc<Database>>) -> Html<String> {
+async fn channel_list(State(db): State<Arc<Database>>) -> Html<String> {
     let db = Arc::clone(&db);
 
-    match task::spawn_blocking(move || db.get_toc()).await {
-        Ok(Ok(toc)) => Html(TocTemplate::render(&toc)),
+    match task::spawn_blocking(move || db.get_channel_list()).await {
+        Ok(Ok(channel_list)) => Html(ChannelListTemplate::render(&channel_list)),
         Ok(Err(e)) => Html(format!("Error retrieving table of contents: {e:?}")),
         Err(e) => Html(format!("Error retrieving table of contents: {e:?}")),
     }

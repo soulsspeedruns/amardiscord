@@ -95,18 +95,18 @@ impl<'de> Deserialize<'de> for MessageContent {
 }
 
 #[derive(Default, Clone)]
-pub struct Toc {
-    pub categories: Vec<TocCategory>,
+pub struct ChannelList {
+    pub categories: Vec<ChannelCategory>,
 }
 
 #[derive(Default, Clone)]
-pub struct TocCategory {
+pub struct ChannelCategory {
     pub name: String,
-    pub channels: Vec<TocChannel>,
+    pub channels: Vec<ChannelListEntry>,
 }
 
 #[derive(Default, Clone)]
-pub struct TocChannel {
+pub struct ChannelListEntry {
     pub name: String,
     pub id: u64,
     pub channel_type: u64,

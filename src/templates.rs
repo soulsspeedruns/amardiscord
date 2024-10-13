@@ -2,17 +2,17 @@ use askama::Template;
 use itertools::Itertools;
 
 use crate::search::SearchResult;
-use crate::{Message, ScrollDirection, Toc};
+use crate::{ChannelList, Message, ScrollDirection};
 
 #[derive(Template)]
-#[template(path = "toc.html")]
-pub struct TocTemplate<'a> {
-    toc: &'a Toc,
+#[template(path = "channel_list.html")]
+pub struct ChannelListTemplate<'a> {
+    channel_list: &'a ChannelList,
 }
 
-impl<'a> TocTemplate<'a> {
-    pub fn render(toc: &'a Toc) -> String {
-        Self { toc }.render().unwrap_or_else(|e| e.to_string())
+impl<'a> ChannelListTemplate<'a> {
+    pub fn render(channel_list: &'a ChannelList) -> String {
+        Self { channel_list }.render().unwrap_or_else(|e| e.to_string())
     }
 }
 
