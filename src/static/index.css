@@ -155,7 +155,6 @@ span.time {
 }
 
 span.avatar {
-  border-radius: 9999px;
   width: 40px;
   height: 40px;
   text-align: center;
@@ -166,6 +165,7 @@ span.avatar {
 }
 
 span.avatar img {
+  border-radius: 9999px;
   height: 100%;
 }
 
@@ -201,10 +201,14 @@ span.avatar img {
   cursor: pointer;
 }
 
-.msg-container {
-  min-height: 3em;  /* Some messages appear to have no content (images?)*/
+li.username:hover .jump-btn {
+  display: inline;
 }
 
-.msg-container:hover .jump-btn {
-  display: inline;
+.scroller {
+  height: 64px;
+}
+
+.scroller.htmx-settling {
+  display: none;
 }

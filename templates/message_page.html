@@ -1,0 +1,28 @@
+{% let direction = direction %}
+{% if matches!(direction, ScrollDirection::Up | ScrollDirection::Both) %}
+  <div class="scroller"
+    hx-get="/api/channel/{{ channel_id }}/{{ page + 1 }}?direction=up"
+    hx-trigger="intersect once threshold:1.0 settle:200ms"
+    hx-swap="outerHTML scroll:top"></div>
+{% endif %}
+{% for MessageGroup { username, first_message, messages } in message_groups %}
+  <div class="messages-container">
+    <ul class="messages">
+      <li class="username">
+        <span class="avatar"><img alt="" src="{{ first_message.avatar }}"/></span>
+        <span class="usr">{{ username }}</span>
+        <span class="time">{{ first_message.sent_at }}</span>
+      </li>
+      <li class="msg">{{ first_message.content|escape("none") }}</li>
+      {% for msg in messages %}
+      <li class="msg">{{ msg.content|escape("none") }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endfor %}
+{% if matches!(direction, ScrollDirection::Down | ScrollDirection::Both) && page > 0 %}
+  <div class="scroller"
+    hx-get="/api/channel/{{ channel_id }}/{{ page - 1 }}?direction=down"
+    hx-trigger="intersect once threshold:1.0 delay:200ms settle:200ms"
+    hx-swap="outerHTML scroll:bottom"></div>
+{% endif %}

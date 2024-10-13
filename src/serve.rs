@@ -6,14 +6,15 @@ use axum::http::header;
 use axum::response::Html;
 use axum::routing::{get, get_service};
 use axum::Router;
-use itertools::Itertools;
-use maud::{html, Markup, PreEscaped};
+use serde::Deserialize;
 use tokio::{fs, task};
 use tower_http::services::ServeDir;
 use tracing::info;
 
 use crate::db::Database;
-use crate::search::{SearchQuery, SearchResult};
+use crate::search::SearchQuery;
+use crate::templates::{ChannelListTemplate, MessagePageTemplate, SearchTemplate};
+use crate::ScrollDirection;
 
 pub async fn serve() -> Result<()> {
     macro_rules! static_get {
@@ -28,7 +29,7 @@ pub async fn serve() -> Result<()> {
     info!("Starting app on http://localhost:3000");
 
     let app = Router::new()
-        .route("/api/toc", get(toc))
+        .route("/api/channel_list", get(channel_list))
         .route("/api/message_page/:rowid", get(message_page))
         .route("/api/channel/:channel/:page", get(channel))
         .route("/api/search", get(search));
@@ -56,177 +57,71 @@ pub async fn serve() -> Result<()> {
     Ok(())
 }
 
-async fn toc(State(db): State<Arc<Database>>) -> Markup {
+async fn channel_list(State(db): State<Arc<Database>>) -> Html<String> {
     let db = Arc::clone(&db);
 
-    let toc = match task::spawn_blocking(move || db.get_toc()).await {
-        Ok(Ok(toc)) => toc,
-        Ok(Err(e)) => return html! { (format!("Error retrieving table of contents: {e:?}")) },
-        Err(e) => return html! { (format!("Error retrieving table of contents: {e:?}")) },
-    };
-
-    let categories = toc.categories.into_iter().map(|category| {
-        let channels = category.channels.into_iter();
-        html! {
-            nav {
-                h2 {
-                    (&category.name)
-                }
-                ul {
-                    @for channel in channels {
-                        li {
-                            a hx-get=(format!("/api/channel/{}/0", channel.id))
-                              hx-target="#content-container"
-                              hx-swap="outerHTML show:bottom"
-                            {
-                                (channel.name)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    });
-
-    html! {
-        @for category in categories {
-            (category)
-        }
+    match task::spawn_blocking(move || db.get_channel_list()).await {
+        Ok(Ok(channel_list)) => Html(ChannelListTemplate::render(&channel_list)),
+        Ok(Err(e)) => Html(format!("Error retrieving table of contents: {e:?}")),
+        Err(e) => Html(format!("Error retrieving table of contents: {e:?}")),
     }
+}
+
+#[derive(Deserialize, Default)]
+struct PageQuery {
+    #[serde(default)]
+    direction: ScrollDirection,
 }
 
 async fn channel(
     State(db): State<Arc<Database>>,
     ExtractPath((channel_id, page)): ExtractPath<(u64, u64)>,
-) -> Markup {
+    ExtractQuery(page_query): ExtractQuery<PageQuery>,
+) -> Html<String> {
     let db = Arc::clone(&db);
 
-    let messages = match task::spawn_blocking(move || db.get_page(channel_id, page)).await {
-        Ok(Ok(messages)) => messages,
-        Ok(Err(e)) => return html! { (format!("Error retrieving messages: {e}")) },
-        Err(e) => return html! { (format!("Error retrieving messages: {e}")) },
-    };
-
-    let grouped = messages.iter().rev().group_by(|msg| &msg.username);
-
-    let messages = grouped.into_iter().map(|(username, messages)| {
-        let mut messages = messages.into_iter();
-        let first_msg = messages.next().unwrap();
-
-        html! {
-            div.msg-container {
-                li.username {
-                    span.avatar {
-                        img alt="" src=(&first_msg.avatar) {}
-                    }
-                    span.usr { (&username) }
-                    " "
-                    span.time { (&first_msg.sent_at) }
-                }
-
-                li.msg {
-                    (PreEscaped(&first_msg.content))
-                }
-
-                @for msg in messages {
-                    li.msg {
-                        (PreEscaped(&msg.content))
-                    }
-                }
-            }
-        }
-    });
-
-    html! {
-        div id="content-container" {
-            div.scroller
-                hx-get=(format!("/api/channel/{channel_id}/{}", page + 1))
-                hx-trigger="intersect once delay:200ms"
-                hx-swap="beforebegin scroll:top" {}
-
-            ul id="messages" {
-                @for m in messages {
-                    (m)
-                }
-            }
-        }
+    match task::spawn_blocking(move || db.get_page(channel_id, page)).await {
+        Ok(Ok(messages)) if messages.is_empty() => Html(String::new()),
+        Ok(Ok(messages)) => {
+            Html(MessagePageTemplate::render(&messages, channel_id, page, page_query.direction))
+        },
+        Ok(Err(e)) => Html(format!("Error retrieving messages: {e}")),
+        Err(e) => Html(format!("Error retrieving messages: {e}")),
     }
 }
 
 async fn message_page(
     State(db): State<Arc<Database>>,
     ExtractPath(rowid): ExtractPath<u64>,
-) -> Markup {
-    let (channel_id, page) = match task::spawn_blocking({
+) -> Html<String> {
+    match task::spawn_blocking({
         let db = Arc::clone(&db);
         move || db.go_to_message(rowid)
     })
     .await
     {
-        Ok(Ok(x)) => x,
-        Ok(Err(e)) => return html! { (format!("Error retrieving page: {e}")) },
-        Err(e) => return html! { (format!("Error retrieving page: {e}")) },
-    };
-
-    channel(State(db), ExtractPath((channel_id, page))).await
+        Ok(Ok((channel_id, page))) => {
+            channel(
+                State(db),
+                ExtractPath((channel_id, page)),
+                ExtractQuery(PageQuery { direction: ScrollDirection::Both }),
+            )
+            .await
+        },
+        Ok(Err(e)) => Html(format!("Error retrieving page: {e}")),
+        Err(e) => Html(format!("Error retrieving page: {e}")),
+    }
 }
 
 async fn search(
     State(db): State<Arc<Database>>,
     ExtractQuery(query): ExtractQuery<SearchQuery>,
-) -> Markup {
+) -> Html<String> {
     let db = Arc::clone(&db);
 
-    let search_results = match task::spawn_blocking(move || db.get_search(query)).await {
-        Ok(Ok(search_results)) => search_results,
-        Ok(Err(e)) => return html! { (format!("Error retrieving search results: {e}")) },
-        Err(e) => return html! { (format!("Error retrieving search results: {e}")) },
-    };
-
-    let grouped = search_results.iter().rev().group_by(|msg| &msg.message.username);
-
-    let messages = grouped.into_iter().map(|(username, search_results)| {
-        let mut search_results = search_results.into_iter();
-        let SearchResult { message_rowid, message, .. } = search_results.next().unwrap();
-
-        html! {
-            div."msg-container clickable"
-                hx-get=(format!("/api/message_page/{}", message_rowid))
-                hx-target="#content-container"
-                hx-swap="outerHTML show:bottom"
-            {
-                li.username {
-                    span.avatar {
-                        img alt="" src=(&message.avatar) {}
-                    }
-                    span.usr { (&username) }
-                    " "
-                    span.time { (&message.sent_at) }
-                    " "
-                    span.jump-btn
-                    {
-                        "Jump"
-                    }
-                }
-
-                li.msg {
-                    (PreEscaped(&message.content))
-                }
-
-                @for search_result in search_results {
-                    li.msg {
-                        (PreEscaped(&search_result.message.content))
-                    }
-                }
-            }
-        }
-    });
-
-    html! {
-        ul id="messages" {
-            @for m in messages {
-                (m)
-            }
-        }
+    match task::spawn_blocking(move || db.get_search(query)).await {
+        Ok(Ok(search_results)) => Html(SearchTemplate::render(&search_results)),
+        Ok(Err(e)) => Html(format!("Error retrieving search results: {e}")),
+        Err(e) => Html(format!("Error retrieving search results: {e}")),
     }
 }
