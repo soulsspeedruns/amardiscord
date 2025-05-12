@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use itertools::Itertools;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
@@ -58,7 +58,9 @@ async fn load_channels(path: &Path) -> Result<Vec<Channel>> {
     while let Some(entry) = entries.next_entry().await? {
         let path = entry.path();
         if path.extension().and_then(|s| s.to_str()) == Some("json") {
-            let content = fs::read_to_string(path).await?;
+            let content = fs::read_to_string(&path)
+                .await
+                .with_context(|| format!("Loading channel {path:?}"))?;
             let mut channel: Channel = serde_json::from_str(&content)?;
             if let Some(msgs) = channel.messages.as_mut() {
                 msgs.sort_by_key(|msg| msg.sent_at);
@@ -78,8 +80,8 @@ pub async fn load_content() -> Result<Content> {
         let path = entry.path();
         if path.is_dir() {
             return Ok(Content {
-                categories: load_categories(&path).await?,
-                channels: load_channels(&path).await?,
+                categories: load_categories(&path).await.context("Loading categories")?,
+                channels: load_channels(&path).await.context("Loading channels")?,
             });
         }
     }
