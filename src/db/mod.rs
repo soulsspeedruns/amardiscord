@@ -143,7 +143,7 @@ impl Database {
 
         let mut stmt = db.prepare(
             r#"
-            SELECT content, username, avatar, sent_at FROM messages
+            SELECT content, username, avatar, sent_at, rowid FROM messages
             WHERE channel_id = ?1
             LIMIT ?2 OFFSET ?3
             "#,
@@ -155,6 +155,7 @@ impl Database {
                 username: row.get(1)?,
                 avatar: row.get(2)?,
                 sent_at: row.get(3)?,
+                rowid: row.get(4)?,
             })
         })?;
 

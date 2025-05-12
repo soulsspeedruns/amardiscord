@@ -24,6 +24,7 @@ impl SearchResult {
                 username: row.get(1)?,
                 avatar: row.get(2)?,
                 sent_at: row.get(3)?,
+                rowid: row.get(5)?,
             },
         })
     }

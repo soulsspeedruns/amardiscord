@@ -268,3 +268,24 @@ li.username:hover .jump-btn {
   color: var(--color-primary-text);
   margin-left: 0.5em;
 }
+
+.copy-link-btn {
+  background: none;
+  border: none;
+  color: var(--color-accent5);
+  cursor: pointer;
+  font-size: 0.8em;
+  padding: 2px 6px;
+  margin-left: 8px;
+  border-radius: 3px;
+  display: none;
+  transition: all 0.2s ease;
+}
+
+.copy-link-btn:hover {
+  background-color: color-mix(in srgb, var(--color-accent5) 10%, var(--color-bg));
+}
+
+li.username:hover .copy-link-btn {
+  display: inline;
+}

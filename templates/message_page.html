@@ -6,12 +6,13 @@
     hx-swap="outerHTML scroll:top"></div>
 {% endif %}
 {% for MessageGroup { username, first_message, messages } in message_groups %}
-  <div class="messages-container">
+  <div class="messages-container" data-message-id="{{ first_message.rowid }}">
     <ul class="messages">
       <li class="username">
         <span class="avatar"><img alt="" src="{{ first_message.avatar }}"/></span>
         <span class="usr">{{ username }}</span>
         <span class="time">{{ first_message.sent_at }}</span>
+        <button class="copy-link-btn" onclick="copyMessageLink({{ first_message.rowid }})">Copy Link</button>
       </li>
       <li class="msg">{{ first_message.content|escape("none") }}</li>
       {% for msg in messages %}

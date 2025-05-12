@@ -39,6 +39,8 @@ pub struct Message {
     pub avatar: String,
     #[serde(rename = "sentAt")]
     pub sent_at: DateTime<Utc>,
+    #[serde(skip)]
+    pub rowid: u64,
 }
 
 #[derive(Debug)]
