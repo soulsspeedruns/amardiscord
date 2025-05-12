@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="initial-content"
+    hx-get="/channel/1/0?direction=up"
+    hx-swap="outerHTML scroll:bottom"
+    hx-trigger="load, intersect once"
+    hx-on::after-request="document.getElementById('channels').setAttribute('hx-get', '/channels?current_channel_id=1')">
+</div>
+{% endblock %} 

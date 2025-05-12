@@ -5,6 +5,28 @@ use crate::search::SearchResult;
 use crate::{ChannelList, Message, ScrollDirection};
 
 #[derive(Template)]
+#[template(path = "index.html")]
+pub struct IndexTemplate;
+
+impl IndexTemplate {
+    pub fn render() -> String {
+        Self {}.render().unwrap_or_else(|e| e.to_string())
+    }
+}
+
+#[derive(Template)]
+#[template(path = "layout.html")]
+pub struct LayoutTemplate<'a> {
+    content: &'a str,
+}
+
+impl<'a> LayoutTemplate<'a> {
+    pub fn render(content: &'a str) -> String {
+        Self { content }.render().unwrap_or_else(|e| e.to_string())
+    }
+}
+
+#[derive(Template)]
 #[template(path = "channel_list.html")]
 pub struct ChannelListTemplate<'a> {
     channel_list: &'a ChannelList,

@@ -2,18 +2,20 @@ use std::sync::Arc;
 
 use anyhow::Result;
 use axum::extract::{Path as ExtractPath, Query as ExtractQuery, State};
-use axum::http::header;
+use axum::http::{header, HeaderMap};
 use axum::response::Html;
 use axum::routing::{get, get_service};
 use axum::Router;
 use serde::Deserialize;
-use tokio::{fs, task};
+use tokio::task;
 use tower_http::services::ServeDir;
 use tracing::info;
 
 use crate::db::Database;
 use crate::search::SearchQuery;
-use crate::templates::{ChannelListTemplate, MessagePageTemplate, SearchTemplate};
+use crate::templates::{
+    ChannelListTemplate, IndexTemplate, LayoutTemplate, MessagePageTemplate, SearchTemplate,
+};
 use crate::ScrollDirection;
 
 pub async fn serve() -> Result<()> {
@@ -29,20 +31,16 @@ pub async fn serve() -> Result<()> {
     info!("Starting app on http://localhost:3000");
 
     let app = Router::new()
+        .route("/", get(|| async { Html(IndexTemplate::render()) }))
         .route("/channels", get(channel_list))
         .route("/channel/:channel/:page", get(channel))
         .route("/message/:rowid", get(message_page))
         .route("/search", get(search));
 
     let app = if cfg!(debug_assertions) {
-        app.route(
-            "/",
-            get(|| async { Html(fs::read_to_string("src/static/index.html").await.unwrap()) }),
-        )
-        .fallback(get_service(ServeDir::new("src/static")))
+        app.fallback(get_service(ServeDir::new("src/static")))
     } else {
-        app.route("/", static_get!("./static/index.html", "text/html"))
-            .route("/index.css", static_get!("./static/index.css", "text/css"))
+        app.route("/index.css", static_get!("./static/index.css", "text/css"))
             .route("/index.js", static_get!("./static/index.js", "application/javascript"))
             .route("/htmx.min.js", static_get!("./static/htmx.min.js", "application/javascript"))
     };
@@ -63,17 +61,30 @@ struct ChannelListQuery {
     current_channel_id: Option<u64>,
 }
 
+fn wrap_content(content: String, headers: &HeaderMap) -> Html<String> {
+    if headers.get("HX-Request").is_some() {
+        Html(content)
+    } else {
+        Html(LayoutTemplate::render(&content))
+    }
+}
+
 async fn channel_list(
     State(db): State<Arc<Database>>,
     ExtractQuery(query): ExtractQuery<ChannelListQuery>,
+    headers: HeaderMap,
 ) -> Html<String> {
     let db = Arc::clone(&db);
 
-    match task::spawn_blocking(move || db.get_channel_list()).await {
-        Ok(Ok(channel_list)) => Html(ChannelListTemplate::render(&channel_list, query.current_channel_id)),
-        Ok(Err(e)) => Html(format!("Error retrieving table of contents: {e:?}")),
-        Err(e) => Html(format!("Error retrieving table of contents: {e:?}")),
-    }
+    let content = match task::spawn_blocking(move || db.get_channel_list()).await {
+        Ok(Ok(channel_list)) => {
+            ChannelListTemplate::render(&channel_list, query.current_channel_id)
+        },
+        Ok(Err(e)) => format!("Error retrieving table of contents: {e:?}"),
+        Err(e) => format!("Error retrieving table of contents: {e:?}"),
+    };
+
+    wrap_content(content, &headers)
 }
 
 #[derive(Deserialize, Default)]
@@ -86,22 +97,26 @@ async fn channel(
     State(db): State<Arc<Database>>,
     ExtractPath((channel_id, page)): ExtractPath<(u64, u64)>,
     ExtractQuery(page_query): ExtractQuery<PageQuery>,
+    headers: HeaderMap,
 ) -> Html<String> {
     let db = Arc::clone(&db);
 
-    match task::spawn_blocking(move || db.get_page(channel_id, page)).await {
-        Ok(Ok(messages)) if messages.is_empty() => Html(String::new()),
+    let content = match task::spawn_blocking(move || db.get_page(channel_id, page)).await {
+        Ok(Ok(messages)) if messages.is_empty() => String::new(),
         Ok(Ok(messages)) => {
-            Html(MessagePageTemplate::render(&messages, channel_id, page, page_query.direction))
+            MessagePageTemplate::render(&messages, channel_id, page, page_query.direction)
         },
-        Ok(Err(e)) => Html(format!("Error retrieving messages: {e}")),
-        Err(e) => Html(format!("Error retrieving messages: {e}")),
-    }
+        Ok(Err(e)) => format!("Error retrieving messages: {e}"),
+        Err(e) => format!("Error retrieving messages: {e}"),
+    };
+
+    wrap_content(content, &headers)
 }
 
 async fn message_page(
     State(db): State<Arc<Database>>,
     ExtractPath(rowid): ExtractPath<u64>,
+    headers: HeaderMap,
 ) -> Html<String> {
     match task::spawn_blocking({
         let db = Arc::clone(&db);
@@ -114,23 +129,27 @@ async fn message_page(
                 State(db),
                 ExtractPath((channel_id, page)),
                 ExtractQuery(PageQuery { direction: ScrollDirection::Both }),
+                headers,
             )
             .await
         },
-        Ok(Err(e)) => Html(format!("Error retrieving page: {e}")),
-        Err(e) => Html(format!("Error retrieving page: {e}")),
+        Ok(Err(e)) => wrap_content(format!("Error retrieving page: {e}"), &headers),
+        Err(e) => wrap_content(format!("Error retrieving page: {e}"), &headers),
     }
 }
 
 async fn search(
     State(db): State<Arc<Database>>,
     ExtractQuery(query): ExtractQuery<SearchQuery>,
+    headers: HeaderMap,
 ) -> Html<String> {
     let db = Arc::clone(&db);
 
-    match task::spawn_blocking(move || db.get_search(query)).await {
-        Ok(Ok(search_results)) => Html(SearchTemplate::render(&search_results)),
-        Ok(Err(e)) => Html(format!("Error retrieving search results: {e}")),
-        Err(e) => Html(format!("Error retrieving search results: {e}")),
-    }
+    let content = match task::spawn_blocking(move || db.get_search(query)).await {
+        Ok(Ok(search_results)) => SearchTemplate::render(&search_results),
+        Ok(Err(e)) => format!("Error retrieving search results: {e}"),
+        Err(e) => format!("Error retrieving search results: {e}"),
+    };
+
+    wrap_content(content, &headers)
 }

@@ -1,9 +1,9 @@
 <!doctype html>
 <html>
   <head>
-    <script defer src="htmx.min.js"></script>
-    <script defer src="index.js"></script>
-    <link rel="stylesheet" href="index.css"/>
+    <script defer src="/htmx.min.js"></script>
+    <script defer src="/index.js"></script>
+    <link rel="stylesheet" href="/index.css"/>
   </head>
 
   <body>
@@ -19,12 +19,7 @@
     </aside>
 
     <div id="content">
-      <div id="initial-content"
-          hx-get="/channel/1/0?direction=up"
-          hx-swap="outerHTML scroll:bottom"
-          hx-trigger="load, intersect once"
-          hx-on::after-request="document.getElementById('channels').setAttribute('hx-get', '/channels?current_channel_id=1')">
-      </div>
+      {% block content %}{% endblock %}
     </div>
 
     <script>
@@ -51,4 +46,4 @@
       });
     </script>
   </body>
-</html>
+</html> 
