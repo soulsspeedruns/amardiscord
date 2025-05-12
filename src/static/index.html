@@ -9,18 +9,18 @@
   <body>
     <div id="search-bar" hx-swap-oob="true">
       <input type="search" name="content" placeholder="Start typing to search..."
-            hx-get="/api/search" hx-trigger="input changed delay:500ms, query"
+            hx-get="/search" hx-trigger="input changed delay:500ms, query"
             hx-target="#content" hx-swap="innerHTML show:bottom">
       </input>
     </div>
 
-    <aside id="channels" hx-get="/api/channel_list" hx-trigger="load">
+    <aside id="channels" hx-get="/channels" hx-trigger="load">
       loading...
     </aside>
 
     <div id="content">
       <div
-          hx-get="/api/channel/1/0?direction=up"
+          hx-get="/channel/1/0?direction=up"
           hx-swap="outerHTML scroll:bottom"
           hx-trigger="intersect once">
       </div>

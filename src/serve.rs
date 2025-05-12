@@ -29,10 +29,10 @@ pub async fn serve() -> Result<()> {
     info!("Starting app on http://localhost:3000");
 
     let app = Router::new()
-        .route("/api/channel_list", get(channel_list))
-        .route("/api/message_page/:rowid", get(message_page))
-        .route("/api/channel/:channel/:page", get(channel))
-        .route("/api/search", get(search));
+        .route("/channels", get(channel_list))
+        .route("/channel/:channel/:page", get(channel))
+        .route("/message/:rowid", get(message_page))
+        .route("/search", get(search));
 
     let app = if cfg!(debug_assertions) {
         app.route(
