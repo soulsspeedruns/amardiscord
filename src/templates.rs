@@ -8,11 +8,12 @@ use crate::{ChannelList, Message, ScrollDirection};
 #[template(path = "channel_list.html")]
 pub struct ChannelListTemplate<'a> {
     channel_list: &'a ChannelList,
+    current_channel_id: Option<u64>,
 }
 
 impl<'a> ChannelListTemplate<'a> {
-    pub fn render(channel_list: &'a ChannelList) -> String {
-        Self { channel_list }.render().unwrap_or_else(|e| e.to_string())
+    pub fn render(channel_list: &'a ChannelList, current_channel_id: Option<u64>) -> String {
+        Self { channel_list, current_channel_id }.render().unwrap_or_else(|e| e.to_string())
     }
 }
 

@@ -161,6 +161,12 @@ h2 {
   transform: translateX(0.2em);
 }
 
+#channels a.active {
+  background-color: var(--color-accent5);
+  color: var(--color-bg);
+  transform: translateX(0.2em);
+}
+
 #content ul li img.e {
   height: 1.2em;
   vertical-align: sub;

@@ -57,11 +57,20 @@ pub async fn serve() -> Result<()> {
     Ok(())
 }
 
-async fn channel_list(State(db): State<Arc<Database>>) -> Html<String> {
+#[derive(Deserialize, Default)]
+struct ChannelListQuery {
+    #[serde(default)]
+    current_channel_id: Option<u64>,
+}
+
+async fn channel_list(
+    State(db): State<Arc<Database>>,
+    ExtractQuery(query): ExtractQuery<ChannelListQuery>,
+) -> Html<String> {
     let db = Arc::clone(&db);
 
     match task::spawn_blocking(move || db.get_channel_list()).await {
-        Ok(Ok(channel_list)) => Html(ChannelListTemplate::render(&channel_list)),
+        Ok(Ok(channel_list)) => Html(ChannelListTemplate::render(&channel_list, query.current_channel_id)),
         Ok(Err(e)) => Html(format!("Error retrieving table of contents: {e:?}")),
         Err(e) => Html(format!("Error retrieving table of contents: {e:?}")),
     }

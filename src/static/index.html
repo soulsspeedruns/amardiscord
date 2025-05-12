@@ -22,7 +22,8 @@
       <div id="initial-content"
           hx-get="/channel/1/0?direction=up"
           hx-swap="outerHTML scroll:bottom"
-          hx-trigger="load, intersect once">
+          hx-trigger="load, intersect once"
+          hx-on::after-request="document.getElementById('channels').setAttribute('hx-get', '/channels?current_channel_id=1')">
       </div>
     </div>
 
@@ -34,6 +35,18 @@
           evt.detail.xhr.addEventListener('load', function() {
             window.scrollTo(0, scrollPos);
           });
+        }
+      });
+
+      // Update channel list when loading a channel
+      document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.id === 'content') {
+          const match = evt.detail.xhr.responseURL.match(/\/channel\/(\d+)\/\d+/);
+          if (match) {
+            const channelId = match[1];
+            document.getElementById('channels').setAttribute('hx-get', `/channels?current_channel_id=${channelId}`);
+            htmx.trigger('#channels', 'load');
+          }
         }
       });
     </script>
