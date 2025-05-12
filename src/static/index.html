@@ -19,12 +19,23 @@
     </aside>
 
     <div id="content">
-      <div
+      <div id="initial-content"
           hx-get="/channel/1/0?direction=up"
           hx-swap="outerHTML scroll:bottom"
-          hx-trigger="intersect once">
+          hx-trigger="load, intersect once">
       </div>
     </div>
 
+    <script>
+      document.body.addEventListener('htmx:beforeSwap', function(evt) {
+        if (evt.detail.target.id === 'content') {
+          // Preserve scroll position when navigating
+          const scrollPos = window.scrollY;
+          evt.detail.xhr.addEventListener('load', function() {
+            window.scrollTo(0, scrollPos);
+          });
+        }
+      });
+    </script>
   </body>
 </html>

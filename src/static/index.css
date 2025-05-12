@@ -7,10 +7,11 @@
   --color-secondary-text: #615f53; /* Medium gray with a burlywood undertone for secondary text */
   --color-tertiary-text: #797761; /* Slightly lighter gray also leaning towards burlywood for tertiary text */
   --color-border: #d2cfc4; /* Light gray border with a burlywood hue */
-  --color-accent1: #deb887; /* Burlywood-like color for the first accent */
+  --color-accent1: #8b5a2b; /* Darker burlywood for usernames - more distinct */
   --color-accent2: #cdaa7d; /* A slightly darker shade for the second accent */
-  --color-accent3: #e4c2a2; /* A lighter, softer shade for the third accent */
+  --color-accent3: #9b7d4e; /* A more muted, darker shade for timestamps */
   --color-accent4: #b0a290; /* A muted, earthy tone for the fourth accent */
+  --color-accent5: #a05d4e; /* Muted brick red for special highlights */
 }
 
 /* Dark Mode Variables */
@@ -21,10 +22,11 @@
     --color-secondary-text: #c7c3b8; /* Medium-light gray with a burlywood undertone for secondary text */
     --color-tertiary-text: #b1ad9f; /* Even lighter gray also leaning towards burlywood for tertiary text */
     --color-border: #504a41; /* Darker gray border with a burlywood hue */
-    --color-accent1: #deb887; /* Burlywood-like color for the first accent */
+    --color-accent1: #e6b17a; /* Brighter burlywood for usernames in dark mode */
     --color-accent2: #cdaa7d; /* A slightly darker shade for the second accent */
-    --color-accent3: #e4c2a2; /* A lighter, softer shade for the third accent */
+    --color-accent3: #b89b6a; /* A more distinct shade for timestamps in dark mode */
     --color-accent4: #b0a290; /* A muted, earthy tone for the fourth accent */
+    --color-accent5: #c17a6b; /* Brighter brick red for special highlights in dark mode */
   }
 }
 
@@ -68,7 +70,18 @@ a {
 }
 
 #search-bar > input {
-  padding: 0.1em 0 0.1em 0.3em;
+  padding: 0.5em;
+  border: 2px solid var(--color-accent5);
+  border-radius: 0.5em;
+  background-color: var(--color-bg);
+  color: var(--color-primary-text);
+  transition: all 0.2s ease;
+}
+
+#search-bar > input:focus {
+  border-color: var(--color-accent1);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent5);
 }
 
 /* Structure and layout */
@@ -127,16 +140,25 @@ h2 {
 }
 
 #channels h2 {
-  color: var(--color-accent1);
+  color: var(--color-accent5);
+  border-bottom: 2px solid var(--color-accent1);
+  padding-bottom: 0.3em;
+  margin-bottom: 0.5em;
 }
 
 #channels a {
   display: block;
+  color: var(--color-primary-text);
+  text-decoration: none;
+  padding: 0.3em 0.5em;
+  border-radius: 0.3em;
+  transition: all 0.2s ease;
 }
 
-#channels li:hover {
-  background-color: var(--color-accent4);
+#channels a:hover {
+  background-color: var(--color-accent5);
   color: var(--color-bg);
+  transform: translateX(0.2em);
 }
 
 #content ul li img.e {
@@ -146,12 +168,14 @@ h2 {
 
 span.usr {
   font-weight: 600;
-  color: var(--color-accent1);
+  color: var(--color-accent5);
+  margin-right: 0.5em;
 }
 
 span.time {
   font-size: 0.7em;
   color: var(--color-accent3);
+  position: relative;
 }
 
 span.avatar {
@@ -184,17 +208,19 @@ span.avatar img {
 
 .jump-btn {
   cursor: pointer;
-  background-color: rgba(0, 0, 0, 0.75);
+  background-color: var(--color-accent5);
   border: none;
   border-radius: 0.5em;
-  padding: 0.2em 0.3em;
+  padding: 0.2em 0.5em;
   font-size: 75%;
-  color: whitesmoke;
-  display: none; /* Hidden until message is hovered over */
+  color: var(--color-bg);
+  display: none;
+  transition: all 0.2s ease;
 }
 
 .jump-btn:hover {
-  color: white;
+  background-color: var(--color-accent1);
+  transform: scale(1.05);
 }
 
 .clickable {
@@ -211,4 +237,28 @@ li.username:hover .jump-btn {
 
 .scroller.htmx-settling {
   display: none;
+}
+
+/* Add new styles for special elements */
+.highlight {
+  color: var(--color-accent5);
+}
+
+/* Update message styles */
+.messages-container {
+  margin-bottom: 1em;
+  border-left: 1px solid var(--color-accent3);
+  padding-left: 0.5em;
+  transition: border-color 0.2s ease;
+}
+
+.messages-container:hover {
+  border-left-color: var(--color-accent5);
+  background-color: color-mix(in srgb, var(--color-accent5) 10%, var(--color-bg));
+}
+
+/* Update message content style */
+.msg {
+  color: var(--color-primary-text);
+  margin-left: 0.5em;
 }

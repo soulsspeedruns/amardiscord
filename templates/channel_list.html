@@ -4,8 +4,10 @@
     <ul>
       {% for channel in category.channels %}
         <li>
-          <a hx-get="/channel/{{ channel.id }}/0?direction=up"
+          <a href="/channel/{{ channel.id }}/0"
+             hx-get="/channel/{{ channel.id }}/0?direction=up"
              hx-target="#content"
+             hx-push-url="true"
              hx-swap="innerHTML scroll:bottom swap:33ms">
             {{ channel.name }}
           </a>
