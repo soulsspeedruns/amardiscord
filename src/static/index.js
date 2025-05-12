@@ -33,5 +33,11 @@
     document.querySelectorAll('.messages-container').forEach(container => {
       observer.observe(container);
     });
+
+    // Scroll to target message if it exists
+    const targetMessage = document.getElementById('target-message');
+    if (targetMessage) {
+      targetMessage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   });
 }());

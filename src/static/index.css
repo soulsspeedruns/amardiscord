@@ -289,3 +289,18 @@ li.username:hover .jump-btn {
 li.username:hover .copy-link-btn {
   display: inline;
 }
+
+#target-message {
+  border-left: 3px solid var(--color-accent5);
+  background-color: color-mix(in srgb, var(--color-accent5) 15%, var(--color-bg));
+  animation: highlight-fade 2s ease-out;
+}
+
+@keyframes highlight-fade {
+  0% {
+    background-color: color-mix(in srgb, var(--color-accent5) 30%, var(--color-bg));
+  }
+  100% {
+    background-color: color-mix(in srgb, var(--color-accent5) 15%, var(--color-bg));
+  }
+}

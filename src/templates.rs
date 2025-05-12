@@ -52,6 +52,7 @@ pub struct MessagePageTemplate<'a> {
     channel_id: u64,
     page: u64,
     direction: ScrollDirection,
+    target_message_id: Option<u64>,
 }
 
 impl MessagePageTemplate<'_> {
@@ -60,6 +61,7 @@ impl MessagePageTemplate<'_> {
         channel_id: u64,
         page: u64,
         direction: ScrollDirection,
+        target_message_id: Option<u64>,
     ) -> String {
         MessagePageTemplate {
             message_groups: messages
@@ -76,6 +78,7 @@ impl MessagePageTemplate<'_> {
             channel_id,
             page,
             direction,
+            target_message_id,
         }
         .render()
         .unwrap_or_else(|e| e.to_string())

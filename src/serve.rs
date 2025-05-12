@@ -93,23 +93,36 @@ struct PageQuery {
     direction: ScrollDirection,
 }
 
+async fn render_message_page(
+    db: Arc<Database>,
+    channel_id: u64,
+    page: u64,
+    direction: ScrollDirection,
+    target_message_id: Option<u64>,
+) -> String {
+    match task::spawn_blocking({
+        let db = Arc::clone(&db);
+        move || db.get_page(channel_id, page)
+    })
+    .await
+    {
+        Ok(Ok(messages)) if messages.is_empty() => String::new(),
+        Ok(Ok(messages)) => {
+            MessagePageTemplate::render(&messages, channel_id, page, direction, target_message_id)
+        },
+        Ok(Err(e)) => format!("Error retrieving messages: {e}"),
+        Err(e) => format!("Error retrieving messages: {e}"),
+    }
+}
+
 async fn channel(
     State(db): State<Arc<Database>>,
     ExtractPath((channel_id, page)): ExtractPath<(u64, u64)>,
     ExtractQuery(page_query): ExtractQuery<PageQuery>,
     headers: HeaderMap,
 ) -> Html<String> {
-    let db = Arc::clone(&db);
-
-    let content = match task::spawn_blocking(move || db.get_page(channel_id, page)).await {
-        Ok(Ok(messages)) if messages.is_empty() => String::new(),
-        Ok(Ok(messages)) => {
-            MessagePageTemplate::render(&messages, channel_id, page, page_query.direction)
-        },
-        Ok(Err(e)) => format!("Error retrieving messages: {e}"),
-        Err(e) => format!("Error retrieving messages: {e}"),
-    };
-
+    let content =
+        render_message_page(Arc::clone(&db), channel_id, page, page_query.direction, None).await;
     wrap_content(content, &headers)
 }
 
@@ -125,13 +138,15 @@ async fn message_page(
     .await
     {
         Ok(Ok((channel_id, page))) => {
-            channel(
-                State(db),
-                ExtractPath((channel_id, page)),
-                ExtractQuery(PageQuery { direction: ScrollDirection::Both }),
-                headers,
+            let content = render_message_page(
+                Arc::clone(&db),
+                channel_id,
+                page,
+                ScrollDirection::Both,
+                Some(rowid),
             )
-            .await
+            .await;
+            wrap_content(content, &headers)
         },
         Ok(Err(e)) => wrap_content(format!("Error retrieving page: {e}"), &headers),
         Err(e) => wrap_content(format!("Error retrieving page: {e}"), &headers),
