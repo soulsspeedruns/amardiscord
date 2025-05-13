@@ -53,17 +53,17 @@
       isProcessingOlderMessagesLoad = false;
     }
 
-    // Update channel list when loading a channel (existing logic)
-    // Check if the target of the swap was the main content area
+    // Update channel list when loading a channel
     if (evt.detail.target.id === 'content') {
       const xhrResponseURL = evt.detail.xhr.responseURL;
-      if (xhrResponseURL) { // Ensure responseURL is available
+      if (xhrResponseURL) {
         const match = xhrResponseURL.match(/\/channel\/(\d+)\/\d+/);
         if (match) {
           const channelId = match[1];
           const channelsElement = document.getElementById('channels');
           if (channelsElement) {
             channelsElement.setAttribute('hx-get', `/channels?current_channel_id=${channelId}`);
+            htmx.process(channelsElement);
             htmx.trigger(channelsElement, 'load');
           }
         }

@@ -303,3 +303,37 @@ li.username:hover .copy-link-btn {
     background-color: color-mix(in srgb, var(--color-accent5) 15%, var(--color-bg));
   }
 }
+
+/* Style for the active navigation link in the channel list */
+nav ul li a.active {
+  background-color: #4A5568; /* A pleasant dark gray - adjust to your theme */
+  color: white; /* Ensure text is readable on the new background */
+  font-weight: bold;
+  border-radius: 4px; /* Optional: for rounded corners */
+  padding: 0.5em 0.75em; /* Optional: adjust padding if needed */
+  display: block; /* Optional: makes the whole area clickable and better for padding */
+}
+
+/* Adjustments for consistent spacing if you use display:block and padding */
+nav ul li a {
+  padding: 0.5em 0.75em; /* Ensure non-active links have same padding for alignment */
+  display: block; /* Ensure non-active links behave similarly */
+  text-decoration: none; /* Common practice to remove underline from nav links */
+  color: inherit; /* Inherit color from parent, or set a specific one */
+  border-radius: 4px; /* Match active link's border-radius */
+}
+
+nav ul {
+  list-style-type: none; /* Remove default list bullets */
+  padding-left: 0; /* Remove default padding */
+}
+
+nav ul li {
+  margin-bottom: 2px; /* Add a little space between channel items */
+}
+
+/* Optional: Hover effect for non-active channels */
+nav ul li a:not(.active):hover {
+  background-color: #e2e8f0; /* A light gray for hover */
+  color: #2d3748; /* Darker text on hover */
+}
