@@ -61,7 +61,8 @@ struct ChannelListQuery {
     current_channel_id: Option<u64>,
 }
 
-fn wrap_content(content: String, headers: &HeaderMap) -> Html<String> {
+// Returns partials for HTMX requests and full layouts for direct requests.
+fn wrap_layout(content: String, headers: &HeaderMap) -> Html<String> {
     if headers.get("HX-Request").is_some() {
         Html(content)
     } else {
@@ -74,8 +75,6 @@ async fn channel_list(
     ExtractQuery(query): ExtractQuery<ChannelListQuery>,
     headers: HeaderMap,
 ) -> Html<String> {
-    let db = Arc::clone(&db);
-
     let content = match task::spawn_blocking(move || db.get_channel_list()).await {
         Ok(Ok(channel_list)) => {
             ChannelListTemplate::render(&channel_list, query.current_channel_id)
@@ -84,7 +83,7 @@ async fn channel_list(
         Err(e) => format!("Error retrieving table of contents: {e:?}"),
     };
 
-    wrap_content(content, &headers)
+    wrap_layout(content, &headers)
 }
 
 #[derive(Deserialize, Default)]
@@ -100,12 +99,7 @@ async fn render_message_page(
     direction: ScrollDirection,
     target_message_id: Option<u64>,
 ) -> String {
-    match task::spawn_blocking({
-        let db = Arc::clone(&db);
-        move || db.get_page(channel_id, page)
-    })
-    .await
-    {
+    match task::spawn_blocking(move || db.get_page(channel_id, page)).await {
         Ok(Ok(messages)) if messages.is_empty() => String::new(),
         Ok(Ok(messages)) => {
             MessagePageTemplate::render(&messages, channel_id, page, direction, target_message_id)
@@ -121,9 +115,8 @@ async fn channel(
     ExtractQuery(page_query): ExtractQuery<PageQuery>,
     headers: HeaderMap,
 ) -> Html<String> {
-    let content =
-        render_message_page(Arc::clone(&db), channel_id, page, page_query.direction, None).await;
-    wrap_content(content, &headers)
+    let content = render_message_page(db, channel_id, page, page_query.direction, None).await;
+    wrap_layout(content, &headers)
 }
 
 async fn message_page(
@@ -138,18 +131,12 @@ async fn message_page(
     .await
     {
         Ok(Ok((channel_id, page))) => {
-            let content = render_message_page(
-                Arc::clone(&db),
-                channel_id,
-                page,
-                ScrollDirection::Both,
-                Some(rowid),
-            )
-            .await;
-            wrap_content(content, &headers)
+            let content =
+                render_message_page(db, channel_id, page, ScrollDirection::Both, Some(rowid)).await;
+            wrap_layout(content, &headers)
         },
-        Ok(Err(e)) => wrap_content(format!("Error retrieving page: {e}"), &headers),
-        Err(e) => wrap_content(format!("Error retrieving page: {e}"), &headers),
+        Ok(Err(e)) => wrap_layout(format!("Error retrieving page: {e}"), &headers),
+        Err(e) => wrap_layout(format!("Error retrieving page: {e}"), &headers),
     }
 }
 
@@ -158,13 +145,11 @@ async fn search(
     ExtractQuery(query): ExtractQuery<SearchQuery>,
     headers: HeaderMap,
 ) -> Html<String> {
-    let db = Arc::clone(&db);
-
     let content = match task::spawn_blocking(move || db.get_search(query)).await {
         Ok(Ok(search_results)) => SearchTemplate::render(&search_results),
         Ok(Err(e)) => format!("Error retrieving search results: {e}"),
         Err(e) => format!("Error retrieving search results: {e}"),
     };
 
-    wrap_content(content, &headers)
+    wrap_layout(content, &headers)
 }

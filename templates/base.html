@@ -21,29 +21,5 @@
     <div id="content">
       {% block content %}{% endblock %}
     </div>
-
-    <script>
-      document.body.addEventListener('htmx:beforeSwap', function(evt) {
-        if (evt.detail.target.id === 'content') {
-          // Preserve scroll position when navigating
-          const scrollPos = window.scrollY;
-          evt.detail.xhr.addEventListener('load', function() {
-            window.scrollTo(0, scrollPos);
-          });
-        }
-      });
-
-      // Update channel list when loading a channel
-      document.body.addEventListener('htmx:afterSwap', function(evt) {
-        if (evt.detail.target.id === 'content') {
-          const match = evt.detail.xhr.responseURL.match(/\/channel\/(\d+)\/\d+/);
-          if (match) {
-            const channelId = match[1];
-            document.getElementById('channels').setAttribute('hx-get', `/channels?current_channel_id=${channelId}`);
-            htmx.trigger('#channels', 'load');
-          }
-        }
-      });
-    </script>
   </body>
 </html> 
