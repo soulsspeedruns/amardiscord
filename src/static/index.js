@@ -1,6 +1,5 @@
 (function() {
   htmx.config.scrollBehavior = 'auto'
-  htmx.logAll()
 
   // Function to copy message link to clipboard
   window.copyMessageLink = function(messageId) {
@@ -53,20 +52,20 @@
       isProcessingOlderMessagesLoad = false;
     }
 
-    // Update channel list when loading a channel
-    if (evt.detail.target.id === 'content') {
-      const xhrResponseURL = evt.detail.xhr.responseURL;
-      if (xhrResponseURL) {
-        const match = xhrResponseURL.match(/\/channel\/(\d+)\/\d+/);
-        if (match) {
-          const channelId = match[1];
-          const channelsElement = document.getElementById('channels');
-          if (channelsElement) {
-            channelsElement.setAttribute('hx-get', `/channels?current_channel_id=${channelId}`);
-            htmx.process(channelsElement);
-            htmx.trigger(channelsElement, 'load');
-          }
-        }
+    // Update channel list if the response includes a channel ID header,
+    // and the request wasn't for loading the channel list itself.
+    const headerChannelId = evt.detail.xhr.getResponseHeader('X-Current-Channel-Id');
+    const channelsElement = document.getElementById('channels');
+
+    if (headerChannelId && channelsElement) {
+      const requestPath = evt.detail.requestConfig.path;
+      // Check if the request that just completed was for loading/reloading the channel list itself.
+      const isChannelListUpdateRequest = requestPath.startsWith('/channels');
+
+      if (!isChannelListUpdateRequest) {
+        channelsElement.setAttribute('hx-get', `/channels?current_channel_id=${headerChannelId}`);
+        htmx.process(channelsElement);
+        htmx.trigger(channelsElement, 'load', { isChannelUpdate: true });
       }
     }
   });
@@ -87,7 +86,7 @@
         const channelPageMatch = requestUrl.match(/\/channel\/\d+\/(\d+)/);
         if (channelPageMatch) {
           const pageNum = parseInt(channelPageMatch[1], 10);
-          if (pageNum === 0 && !requestUrl.includes('direction=')) {
+          if (pageNum === 0 && !requestUrl.includes('direction=') && !(evt.detail.requestConfig && evt.detail.requestConfig.triggeringEvent && evt.detail.requestConfig.triggeringEvent.detail && evt.detail.requestConfig.triggeringEvent.detail.isChannelUpdate)) {
             currentScrollContainer.scrollTop = currentScrollContainer.scrollHeight; // Scroll to bottom
           }
         }

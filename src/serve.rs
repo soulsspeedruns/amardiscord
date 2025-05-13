@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use axum::extract::{Path as ExtractPath, Query as ExtractQuery, State};
 use axum::http::{header, HeaderMap};
-use axum::response::Html;
+use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{get, get_service};
 use axum::Router;
 use serde::Deserialize;
@@ -114,16 +114,18 @@ async fn channel(
     ExtractPath((channel_id, page)): ExtractPath<(u64, u64)>,
     ExtractQuery(page_query): ExtractQuery<PageQuery>,
     headers: HeaderMap,
-) -> Html<String> {
+) -> Response {
     let content = render_message_page(db, channel_id, page, page_query.direction, None).await;
-    wrap_layout(content, &headers)
+    let mut response = wrap_layout(content, &headers).into_response();
+    response.headers_mut().insert("X-Current-Channel-Id", channel_id.to_string().parse().unwrap());
+    response
 }
 
 async fn message_page(
     State(db): State<Arc<Database>>,
     ExtractPath(rowid): ExtractPath<u64>,
     headers: HeaderMap,
-) -> Html<String> {
+) -> Response {
     match task::spawn_blocking({
         let db = Arc::clone(&db);
         move || db.go_to_message(rowid)
@@ -131,12 +133,16 @@ async fn message_page(
     .await
     {
         Ok(Ok((channel_id, page))) => {
-            let content =
+            let content_html =
                 render_message_page(db, channel_id, page, ScrollDirection::Both, Some(rowid)).await;
-            wrap_layout(content, &headers)
+            let mut response = wrap_layout(content_html, &headers).into_response();
+            response
+                .headers_mut()
+                .insert("X-Current-Channel-Id", channel_id.to_string().parse().unwrap());
+            response
         },
-        Ok(Err(e)) => wrap_layout(format!("Error retrieving page: {e}"), &headers),
-        Err(e) => wrap_layout(format!("Error retrieving page: {e}"), &headers),
+        Ok(Err(e)) => wrap_layout(format!("Error retrieving page: {e}"), &headers).into_response(),
+        Err(e) => wrap_layout(format!("Error retrieving page: {e}"), &headers).into_response(),
     }
 }
 
