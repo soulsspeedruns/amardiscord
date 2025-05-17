@@ -83,12 +83,12 @@ pub(crate) fn cache(db: &Connection) -> Result<()> {
     db.execute(
         r#"
         INSERT INTO messages_pages (page, messages_rowid, channel_id)
-        SELECT (
+        SELECT ((
             ROW_NUMBER() OVER (
                 PARTITION BY channel_id
                 ORDER BY sent_at DESC
             )
-        ) / ?1, messages.rowid, messages.channel_id
+        ) - 1) / ?1, messages.rowid, messages.channel_id
         FROM messages;
         "#,
         [PAGE_SIZE],
