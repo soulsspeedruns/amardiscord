@@ -1,12 +1,11 @@
 use std::fmt::Write;
 
-use anyhow::Result;
 use itertools::Itertools;
 use rusqlite::Row;
 use serde::Deserialize;
 use textwrap_macros::dedent;
 
-use crate::{Message, MessageContent};
+use crate::{db, Message, MessageContent};
 
 pub struct SearchResult {
     pub message_rowid: u64,
@@ -37,7 +36,7 @@ pub struct SearchQuery {
 }
 
 impl SearchQuery {
-    pub fn build(self) -> Result<(String, Vec<String>)> {
+    pub fn build(self) -> Result<(String, Vec<String>), db::Error> {
         let mut query = String::new();
         let mut params = vec![];
 
@@ -54,17 +53,21 @@ impl SearchQuery {
                 WHERE
                 "#
             )
-        )?;
+        )
+        .map_err(db::Error::SearchQueryBuild)?;
 
         if let Some(username) = self.username.map(fts_query) {
-            writeln!(query, r#"messages_fts.username MATCH ?{} OR"#, params.len() + 1)?;
+            writeln!(query, r#"messages_fts.username MATCH ?{} OR"#, params.len() + 1)
+                .map_err(db::Error::SearchQueryBuild)?;
             params.push(format!("*\"{username}\"*"));
         }
 
-        writeln!(query, r#"messages_fts.content MATCH ?{}"#, params.len() + 1)?;
+        writeln!(query, r#"messages_fts.content MATCH ?{}"#, params.len() + 1)
+            .map_err(db::Error::SearchQueryBuild)?;
         params.push(fts_query(self.content));
 
-        writeln!(query, r#"ORDER BY messages.sent_at DESC;"#)?;
+        writeln!(query, r#"ORDER BY messages.sent_at DESC;"#)
+            .map_err(db::Error::SearchQueryBuild)?;
 
         Ok((query, params))
     }

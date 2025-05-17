@@ -1,15 +1,14 @@
-use anyhow::Result;
 use rusqlite::Connection;
 use tracing::info;
 
-use crate::db::PAGE_SIZE;
+use crate::db::{self, PAGE_SIZE};
 use crate::{Category, Channel, Message};
 
 pub(crate) fn insert_messages(
     messages: Vec<Message>,
     channel_id: i64,
     db: &Connection,
-) -> Result<()> {
+) -> Result<(), db::Error> {
     let mut stmt = db.prepare(
         r#"
         INSERT INTO messages (content, username, avatar, sent_at, channel_id)
@@ -30,7 +29,11 @@ pub(crate) fn insert_messages(
     Ok(())
 }
 
-pub(crate) fn insert_channel(channel: Channel, category_id: i64, db: &Connection) -> Result<()> {
+pub(crate) fn insert_channel(
+    channel: Channel,
+    category_id: i64,
+    db: &Connection,
+) -> Result<(), db::Error> {
     if channel.channel_type != 0 {
         info!("Skipping channel \"{}\"...", channel.name);
         return Ok(());
@@ -57,7 +60,7 @@ pub(crate) fn insert_channel(channel: Channel, category_id: i64, db: &Connection
     Ok(())
 }
 
-pub(crate) fn insert_category(category: Category, db: &Connection) -> Result<()> {
+pub(crate) fn insert_category(category: Category, db: &Connection) -> Result<(), db::Error> {
     info!("Inserting category \"{}\"...", category.name);
 
     db.execute(r#"INSERT INTO categories (name) VALUES (?1);"#, [category.name])?;
@@ -69,7 +72,7 @@ pub(crate) fn insert_category(category: Category, db: &Connection) -> Result<()>
     Ok(())
 }
 
-pub(crate) fn cache(db: &Connection) -> Result<()> {
+pub(crate) fn cache(db: &Connection) -> Result<(), db::Error> {
     info!("Populating FTS table...");
     db.execute(
         r#"
@@ -97,7 +100,7 @@ pub(crate) fn cache(db: &Connection) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn initialize(db: &Connection) -> Result<()> {
+pub(crate) fn initialize(db: &Connection) -> Result<(), db::Error> {
     db.execute_batch(include_str!("migrations/init.sql"))?;
     Ok(())
 }

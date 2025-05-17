@@ -4,11 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.75"
-askama = { version = "0.12.1", features = ["with-axum"] }
-askama_axum = "0.4.0"
-askama_escape = "0.10.3"
-axum = "0.6.20"
+askama = { version = "0.14" }
+askama_escape = "0.13.0"
+axum = "0.8.4"
 chrono = { version = "0.4.31", default-features = false, features = ["serde"] }
 clap = { version = "4.4.8", features = ["derive"] }
 itertools = "0.11.0"
@@ -20,7 +18,8 @@ rusqlite = { version = "0.30.0", features = ["bundled", "chrono"] }
 serde = { version = "1.0.192", features = ["derive"] }
 serde_json = "1.0.108"
 textwrap-macros = "0.3.0"
+thiserror = "2.0.12"
 tokio = { version = "1.33.0", features = ["full"] }
-tower-http = { version = "0.4.4", features = ["fs"] }
+tower-http = { version = "0.6.4", features = ["fs"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.17"

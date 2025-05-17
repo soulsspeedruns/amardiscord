@@ -1,9 +1,9 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
 use itertools::Itertools;
 use r2d2::Pool;
 use r2d2_sqlite::SqliteConnectionManager;
+use thiserror::Error;
 use tokio::fs;
 
 use crate::search::{SearchQuery, SearchResult};
@@ -14,9 +14,25 @@ use crate::{
 
 mod init;
 
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("I/O error")]
+    Io(#[from] std::io::Error),
+    #[error("serialization error")]
+    Serde(#[from] serde_json::Error),
+    #[error("database connection pool error")]
+    Pool(#[from] r2d2::Error),
+    #[error("database error")]
+    Rusqlite(#[from] rusqlite::Error),
+    #[error("Loading channel {0}: {1}")]
+    LoadChannel(PathBuf, std::io::Error),
+    #[error("Search query build error")]
+    SearchQueryBuild(std::fmt::Error),
+}
+
 const PAGE_SIZE: u64 = 100;
 
-async fn load_categories(path: &Path) -> Result<Vec<Category>> {
+async fn load_categories(path: &Path) -> Result<Vec<Category>, Error> {
     let path = path.join("categories");
 
     let mut categories = Vec::new();
@@ -46,7 +62,7 @@ async fn load_categories(path: &Path) -> Result<Vec<Category>> {
     Ok(categories)
 }
 
-async fn load_channels(path: &Path) -> Result<Vec<Channel>> {
+async fn load_channels(path: &Path) -> Result<Vec<Channel>, Error> {
     let path = path.join("other_channels");
     let mut channels = Vec::new();
 
@@ -58,9 +74,8 @@ async fn load_channels(path: &Path) -> Result<Vec<Channel>> {
     while let Some(entry) = entries.next_entry().await? {
         let path = entry.path();
         if path.extension().and_then(|s| s.to_str()) == Some("json") {
-            let content = fs::read_to_string(&path)
-                .await
-                .with_context(|| format!("Loading channel {path:?}"))?;
+            let content =
+                fs::read_to_string(&path).await.map_err(|e| Error::LoadChannel(path, e))?;
             let mut channel: Channel = serde_json::from_str(&content)?;
             if let Some(msgs) = channel.messages.as_mut() {
                 msgs.sort_by_key(|msg| msg.sent_at);
@@ -73,15 +88,15 @@ async fn load_channels(path: &Path) -> Result<Vec<Channel>> {
     Ok(channels)
 }
 
-pub async fn load_content() -> Result<Content> {
+pub async fn load_content() -> Result<Content, Error> {
     let mut entries = fs::read_dir("./data").await?;
 
     while let Some(entry) = entries.next_entry().await? {
         let path = entry.path();
         if path.is_dir() {
             return Ok(Content {
-                categories: load_categories(&path).await.context("Loading categories")?,
-                channels: load_channels(&path).await.context("Loading channels")?,
+                categories: load_categories(&path).await?,
+                channels: load_channels(&path).await?,
             });
         }
     }
@@ -92,7 +107,7 @@ pub async fn load_content() -> Result<Content> {
 pub struct Database(Pool<SqliteConnectionManager>);
 
 impl Database {
-    pub fn new() -> Result<Self> {
+    pub fn new() -> Result<Self, Error> {
         Ok(Self(
             Pool::builder()
                 .max_size(32)
@@ -100,7 +115,7 @@ impl Database {
         ))
     }
 
-    async fn initialize(&mut self) -> Result<()> {
+    async fn initialize(&mut self) -> Result<(), Error> {
         let db = self.0.get()?;
 
         // Initialize database
@@ -125,7 +140,7 @@ impl Database {
         Ok(())
     }
 
-    pub fn go_to_message(&self, message_rowid: u64) -> Result<(u64, u64)> {
+    pub fn go_to_message(&self, message_rowid: u64) -> Result<(u64, u64), Error> {
         let db = self.0.get()?;
 
         Ok(db.query_row(
@@ -138,7 +153,7 @@ impl Database {
         )?)
     }
 
-    pub fn get_page(&self, channel_id: u64, page: u64) -> Result<Vec<Message>> {
+    pub fn get_page(&self, channel_id: u64, page: u64) -> Result<Vec<Message>, Error> {
         let db = self.0.get()?;
 
         let mut stmt = db.prepare(
@@ -162,7 +177,7 @@ impl Database {
         Ok(messages.collect::<rusqlite::Result<Vec<_>>>()?)
     }
 
-    pub fn get_search(&self, search_query: SearchQuery) -> Result<Vec<SearchResult>> {
+    pub fn get_search(&self, search_query: SearchQuery) -> Result<Vec<SearchResult>, Error> {
         let db = self.0.get()?;
 
         let (query, params) = search_query.build()?;
@@ -174,7 +189,7 @@ impl Database {
         Ok(messages.collect::<rusqlite::Result<Vec<_>>>()?)
     }
 
-    pub fn get_channel_list(&self) -> Result<ChannelList> {
+    pub fn get_channel_list(&self) -> Result<ChannelList, Error> {
         let db = self.0.get()?;
 
         let mut stmt = db.prepare(
@@ -215,6 +230,6 @@ impl Database {
     }
 }
 
-pub async fn build() -> Result<()> {
+pub async fn build() -> Result<(), Error> {
     Database::new()?.initialize().await
 }

@@ -1,38 +1,41 @@
 use std::sync::Arc;
 
-use anyhow::Context;
 use axum::extract::{Path as ExtractPath, Query as ExtractQuery, State};
 use axum::http::{header, HeaderMap};
-use axum::response::{Html, IntoResponse, Response, Result};
-use axum::routing::{get, get_service};
+use axum::response::{Html, IntoResponse, Response};
+use axum::routing::get;
 use axum::Router;
 use serde::Deserialize;
+use thiserror::Error;
+use tokio::net::TcpListener;
 use tokio::task;
 use tower_http::services::ServeDir;
 use tracing::info;
 
-use crate::db::Database;
+use crate::db::{self, Database};
 use crate::search::SearchQuery;
 use crate::templates::{
     ChannelListTemplate, IndexTemplate, LayoutTemplate, MessagePageTemplate, SearchTemplate,
 };
-use crate::ScrollDirection;
+use crate::{Result, ScrollDirection};
 
-pub struct Error(anyhow::Error);
-
-impl From<anyhow::Error> for Error {
-    fn from(value: anyhow::Error) -> Self {
-        Self(value)
-    }
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("serve")]
+    Axum(std::io::Error),
+    #[error("join")]
+    Join(task::JoinError),
+    #[error("retrieving channel list")]
+    GetChannelList(db::Error),
+    #[error("retrieving messages")]
+    GetPage(db::Error),
+    #[error("retrieving page offsets")]
+    GoToMessage(db::Error),
+    #[error("retrieving search results")]
+    GetSearch(db::Error),
 }
 
-impl IntoResponse for Error {
-    fn into_response(self) -> Response {
-        Html(self.0.to_string()).into_response()
-    }
-}
-
-pub async fn serve() -> anyhow::Result<()> {
+pub async fn serve() -> Result<()> {
     macro_rules! static_get {
         ($e:literal, $content_type:literal) => {
             get(|| async { ([(header::CONTENT_TYPE, $content_type)], include_str!($e)) })
@@ -52,7 +55,7 @@ pub async fn serve() -> anyhow::Result<()> {
         .route("/search", get(search));
 
     let app = if cfg!(debug_assertions) {
-        app.fallback(get_service(ServeDir::new("src/static")))
+        app.fallback_service(ServeDir::new("src/static"))
     } else {
         app.route("/index.css", static_get!("./static/index.css", "text/css"))
             .route("/index.js", static_get!("./static/index.js", "application/javascript"))
@@ -60,8 +63,9 @@ pub async fn serve() -> anyhow::Result<()> {
     };
 
     let app = app.with_state(state);
+    let listener = TcpListener::bind("0.0.0.0:3000").await.map_err(Error::Axum)?;
 
-    Ok(axum::Server::bind(&"0.0.0.0:3000".parse().unwrap()).serve(app.into_make_service()).await?)
+    Ok(axum::serve(listener, app.into_make_service()).await.map_err(Error::Axum)?)
 }
 
 #[derive(Deserialize, Default)]
@@ -70,16 +74,16 @@ struct ChannelListQuery {
     current_channel_id: Option<u64>,
 }
 
-async fn task<F, T, E>(f: F) -> Result<T, Error>
+async fn task<F, T, E>(f: F) -> Result<T>
 where
-    F: FnOnce() -> Result<T, E> + Send + 'static,
+    F: FnOnce() -> std::result::Result<T, E> + Send + 'static,
     T: Send + 'static,
-    E: Send + Into<Error> + 'static,
+    E: Send + Into<crate::Error> + 'static,
 {
     match task::spawn_blocking(f).await {
         Ok(Ok(output)) => Ok(output),
         Ok(Err(e)) => Err(e.into()),
-        Err(e) => Err(anyhow::Error::from(e).into()),
+        Err(e) => Err(Error::Join(e).into()),
     }
 }
 
@@ -102,11 +106,11 @@ async fn channel_list(
     ExtractQuery(query): ExtractQuery<ChannelListQuery>,
     headers: HeaderMap,
 ) -> Result<Html<String>> {
-    Ok(task(move || db.get_channel_list().context("Error retrieving table of contents"))
+    task(move || db.get_channel_list().map_err(Error::GetChannelList))
         .await
         .map(|channel_list| ChannelListTemplate::render(&channel_list, query.current_channel_id))
         .map(|content| wrap_partial(&headers, content))
-        .map(Html)?)
+        .map(Html)
 }
 
 #[derive(Deserialize, Default)]
@@ -121,13 +125,13 @@ async fn channel(
     ExtractQuery(page_query): ExtractQuery<PageQuery>,
     headers: HeaderMap,
 ) -> Result<Response> {
-    Ok(task(move || db.get_page(channel_id, page).context("Error retrieving messages"))
+    task(move || db.get_page(channel_id, page).map_err(Error::GetPage))
         .await
         .map(|messages| {
             MessagePageTemplate::render(&messages, channel_id, page, page_query.direction, None)
         })
         .map(|content| wrap_partial(&headers, content))
-        .map(|content| with_channel_id(channel_id, content))?)
+        .map(|content| with_channel_id(channel_id, content))
 }
 
 async fn message_page(
@@ -135,10 +139,9 @@ async fn message_page(
     ExtractPath(rowid): ExtractPath<u64>,
     headers: HeaderMap,
 ) -> Result<Response> {
-    Ok(task(move || {
-        let (channel_id, page) =
-            db.go_to_message(rowid).context("Error retrieving page offsets")?;
-        let messages = db.get_page(channel_id, page).context("Error retrieving page")?;
+    task(move || {
+        let (channel_id, page) = db.go_to_message(rowid).map_err(Error::GoToMessage)?;
+        let messages = db.get_page(channel_id, page).map_err(Error::GetPage)?;
         Ok::<_, Error>((channel_id, page, messages))
     })
     .await
@@ -155,7 +158,7 @@ async fn message_page(
         )
     })
     .map(|(channel_id, content)| (channel_id, wrap_partial(&headers, content)))
-    .map(|(channel_id, content)| with_channel_id(channel_id, content))?)
+    .map(|(channel_id, content)| with_channel_id(channel_id, content))
 }
 
 async fn search(
@@ -163,9 +166,9 @@ async fn search(
     ExtractQuery(query): ExtractQuery<SearchQuery>,
     headers: HeaderMap,
 ) -> Result<Html<String>> {
-    Ok(task(move || db.get_search(query).context("Error retrieving search results"))
+    task(move || db.get_search(query).map_err(Error::GetSearch))
         .await
         .map(|search_results| SearchTemplate::render(&search_results))
         .map(|content| wrap_partial(&headers, content))
-        .map(Html)?)
+        .map(Html)
 }

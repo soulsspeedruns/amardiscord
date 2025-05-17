@@ -1,4 +1,4 @@
-use anyhow::Result;
+use amardiscord::Result;
 use clap::{Parser, Subcommand};
 use tracing_subscriber::filter::LevelFilter;
 
