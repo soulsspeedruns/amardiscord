@@ -50,8 +50,8 @@ pub async fn serve() -> Result<()> {
     let app = Router::new()
         .route("/", get(|| async { Html(IndexTemplate::render()) }))
         .route("/channels", get(channel_list))
-        .route("/channel/:channel/:page", get(channel))
-        .route("/message/:rowid", get(message_page))
+        .route("/channel/{channel}/{page}", get(channel))
+        .route("/message/{rowid}", get(message_page))
         .route("/search", get(search));
 
     let app = if cfg!(debug_assertions) {
