@@ -43,6 +43,7 @@ struct MessageGroup<'a> {
     username: &'a str,
     first_message: &'a Message,
     messages: Vec<&'a Message>,
+    highlighted: bool,
 }
 
 #[derive(Template)]
@@ -52,7 +53,6 @@ pub struct MessagePageTemplate<'a> {
     channel_id: u64,
     page: u64,
     direction: ScrollDirection,
-    target_message_id: Option<u64>,
 }
 
 impl MessagePageTemplate<'_> {
@@ -63,25 +63,30 @@ impl MessagePageTemplate<'_> {
         direction: ScrollDirection,
         target_message_id: Option<u64>,
     ) -> String {
-        MessagePageTemplate {
-            message_groups: messages
+        if messages.is_empty() {
+            String::new()
+        } else {
+            let message_groups = messages
                 .iter()
                 .rev()
                 .group_by(|msg| &msg.username)
                 .into_iter()
                 .map(|(username, mut messages)| {
                     let first_message = messages.next().unwrap();
-                    let messages = messages.collect();
-                    MessageGroup { username, first_message, messages }
+                    let messages = messages.collect::<Vec<_>>();
+                    let highlighted = target_message_id
+                        .map(|id| {
+                            first_message.rowid == id || messages.iter().any(|m| m.rowid == id)
+                        })
+                        .unwrap_or(false);
+                    MessageGroup { username, first_message, messages, highlighted }
                 })
-                .collect(),
-            channel_id,
-            page,
-            direction,
-            target_message_id,
+                .collect();
+
+            MessagePageTemplate { message_groups, channel_id, page, direction }
+                .render()
+                .unwrap_or_else(|e| e.to_string())
         }
-        .render()
-        .unwrap_or_else(|e| e.to_string())
     }
 }
 

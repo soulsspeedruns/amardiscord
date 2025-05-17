@@ -5,8 +5,8 @@
     hx-trigger="intersect once threshold:1.0 settle:200ms"
     hx-swap="outerHTML"></div>
 {% endif %}
-{% for MessageGroup { username, first_message, messages } in message_groups %}
-  <div class="messages-container" data-message-id="{{ first_message.rowid }}" {% if target_message_id.is_some() && target_message_id.unwrap() == first_message.rowid %}id="target-message"{% endif %}>
+{% for MessageGroup { username, first_message, messages, highlighted } in message_groups %}
+  <div class="messages-container" data-message-id="{{ first_message.rowid }}" {% if highlighted %}id="target-message"{% endif %}>
     <ul class="messages">
       <li class="username">
         <span class="avatar"><img alt="" src="{{ first_message.avatar }}"/></span>
