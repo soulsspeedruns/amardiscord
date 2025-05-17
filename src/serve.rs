@@ -1,9 +1,9 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::Context;
 use axum::extract::{Path as ExtractPath, Query as ExtractQuery, State};
 use axum::http::{header, HeaderMap};
-use axum::response::{Html, IntoResponse, Response};
+use axum::response::{Html, IntoResponse, Response, Result};
 use axum::routing::{get, get_service};
 use axum::Router;
 use serde::Deserialize;
@@ -18,7 +18,21 @@ use crate::templates::{
 };
 use crate::ScrollDirection;
 
-pub async fn serve() -> Result<()> {
+pub struct Error(anyhow::Error);
+
+impl From<anyhow::Error> for Error {
+    fn from(value: anyhow::Error) -> Self {
+        Self(value)
+    }
+}
+
+impl IntoResponse for Error {
+    fn into_response(self) -> Response {
+        Html(self.0.to_string()).into_response()
+    }
+}
+
+pub async fn serve() -> anyhow::Result<()> {
     macro_rules! static_get {
         ($e:literal, $content_type:literal) => {
             get(|| async { ([(header::CONTENT_TYPE, $content_type)], include_str!($e)) })
@@ -47,12 +61,7 @@ pub async fn serve() -> Result<()> {
 
     let app = app.with_state(state);
 
-    axum::Server::bind(&"0.0.0.0:3000".parse().unwrap())
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
-
-    Ok(())
+    Ok(axum::Server::bind(&"0.0.0.0:3000".parse().unwrap()).serve(app.into_make_service()).await?)
 }
 
 #[derive(Deserialize, Default)]
@@ -61,29 +70,43 @@ struct ChannelListQuery {
     current_channel_id: Option<u64>,
 }
 
-// Returns partials for HTMX requests and full layouts for direct requests.
-fn wrap_layout(content: String, headers: &HeaderMap) -> Html<String> {
-    if headers.get("HX-Request").is_some() {
-        Html(content)
-    } else {
-        Html(LayoutTemplate::render(&content))
+async fn task<F, T, E>(f: F) -> Result<T, Error>
+where
+    F: FnOnce() -> Result<T, E> + Send + 'static,
+    T: Send + 'static,
+    E: Send + Into<Error> + 'static,
+{
+    match task::spawn_blocking(f).await {
+        Ok(Ok(output)) => Ok(output),
+        Ok(Err(e)) => Err(e.into()),
+        Err(e) => Err(anyhow::Error::from(e).into()),
     }
+}
+
+fn wrap_partial(headers: &HeaderMap, content: String) -> String {
+    if headers.get("HX-Request").is_some() {
+        content
+    } else {
+        LayoutTemplate::render(&content)
+    }
+}
+
+fn with_channel_id(channel_id: u64, content: String) -> Response {
+    let mut response = Html(content).into_response();
+    response.headers_mut().insert("X-Current-Channel-Id", channel_id.to_string().parse().unwrap());
+    response
 }
 
 async fn channel_list(
     State(db): State<Arc<Database>>,
     ExtractQuery(query): ExtractQuery<ChannelListQuery>,
     headers: HeaderMap,
-) -> Html<String> {
-    let content = match task::spawn_blocking(move || db.get_channel_list()).await {
-        Ok(Ok(channel_list)) => {
-            ChannelListTemplate::render(&channel_list, query.current_channel_id)
-        },
-        Ok(Err(e)) => format!("Error retrieving table of contents: {e:?}"),
-        Err(e) => format!("Error retrieving table of contents: {e:?}"),
-    };
-
-    wrap_layout(content, &headers)
+) -> Result<Html<String>> {
+    Ok(task(move || db.get_channel_list().context("Error retrieving table of contents"))
+        .await
+        .map(|channel_list| ChannelListTemplate::render(&channel_list, query.current_channel_id))
+        .map(|content| wrap_partial(&headers, content))
+        .map(Html)?)
 }
 
 #[derive(Deserialize, Default)]
@@ -92,70 +115,57 @@ struct PageQuery {
     direction: ScrollDirection,
 }
 
-async fn render_message_page(
-    db: Arc<Database>,
-    channel_id: u64,
-    page: u64,
-    direction: ScrollDirection,
-    target_message_id: Option<u64>,
-) -> String {
-    match task::spawn_blocking(move || db.get_page(channel_id, page)).await {
-        Ok(Ok(messages)) if messages.is_empty() => String::new(),
-        Ok(Ok(messages)) => {
-            MessagePageTemplate::render(&messages, channel_id, page, direction, target_message_id)
-        },
-        Ok(Err(e)) => format!("Error retrieving messages: {e}"),
-        Err(e) => format!("Error retrieving messages: {e}"),
-    }
-}
-
 async fn channel(
     State(db): State<Arc<Database>>,
     ExtractPath((channel_id, page)): ExtractPath<(u64, u64)>,
     ExtractQuery(page_query): ExtractQuery<PageQuery>,
     headers: HeaderMap,
-) -> Response {
-    let content = render_message_page(db, channel_id, page, page_query.direction, None).await;
-    let mut response = wrap_layout(content, &headers).into_response();
-    response.headers_mut().insert("X-Current-Channel-Id", channel_id.to_string().parse().unwrap());
-    response
+) -> Result<Response> {
+    Ok(task(move || db.get_page(channel_id, page).context("Error retrieving messages"))
+        .await
+        .map(|messages| {
+            MessagePageTemplate::render(&messages, channel_id, page, page_query.direction, None)
+        })
+        .map(|content| wrap_partial(&headers, content))
+        .map(|content| with_channel_id(channel_id, content))?)
 }
 
 async fn message_page(
     State(db): State<Arc<Database>>,
     ExtractPath(rowid): ExtractPath<u64>,
     headers: HeaderMap,
-) -> Response {
-    match task::spawn_blocking({
-        let db = Arc::clone(&db);
-        move || db.go_to_message(rowid)
+) -> Result<Response> {
+    Ok(task(move || {
+        let (channel_id, page) =
+            db.go_to_message(rowid).context("Error retrieving page offsets")?;
+        let messages = db.get_page(channel_id, page).context("Error retrieving page")?;
+        Ok::<_, Error>((channel_id, page, messages))
     })
     .await
-    {
-        Ok(Ok((channel_id, page))) => {
-            let content_html =
-                render_message_page(db, channel_id, page, ScrollDirection::Both, Some(rowid)).await;
-            let mut response = wrap_layout(content_html, &headers).into_response();
-            response
-                .headers_mut()
-                .insert("X-Current-Channel-Id", channel_id.to_string().parse().unwrap());
-            response
-        },
-        Ok(Err(e)) => wrap_layout(format!("Error retrieving page: {e}"), &headers).into_response(),
-        Err(e) => wrap_layout(format!("Error retrieving page: {e}"), &headers).into_response(),
-    }
+    .map(|(channel_id, page, messages)| {
+        (
+            channel_id,
+            MessagePageTemplate::render(
+                &messages,
+                channel_id,
+                page,
+                ScrollDirection::Both,
+                Some(rowid),
+            ),
+        )
+    })
+    .map(|(channel_id, content)| (channel_id, wrap_partial(&headers, content)))
+    .map(|(channel_id, content)| with_channel_id(channel_id, content))?)
 }
 
 async fn search(
     State(db): State<Arc<Database>>,
     ExtractQuery(query): ExtractQuery<SearchQuery>,
     headers: HeaderMap,
-) -> Html<String> {
-    let content = match task::spawn_blocking(move || db.get_search(query)).await {
-        Ok(Ok(search_results)) => SearchTemplate::render(&search_results),
-        Ok(Err(e)) => format!("Error retrieving search results: {e}"),
-        Err(e) => format!("Error retrieving search results: {e}"),
-    };
-
-    wrap_layout(content, &headers)
+) -> Result<Html<String>> {
+    Ok(task(move || db.get_search(query).context("Error retrieving search results"))
+        .await
+        .map(|search_results| SearchTemplate::render(&search_results))
+        .map(|content| wrap_partial(&headers, content))
+        .map(Html)?)
 }

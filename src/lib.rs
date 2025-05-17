@@ -87,8 +87,7 @@ impl<'de> Deserialize<'de> for MessageContent {
                 let emote_name = &captures[2];
                 let emote_id = &captures[3];
                 format!(
-                    r#"<img class="e" alt="{}" src="https://cdn.discordapp.com/emojis/{}.{}"/>"#,
-                    emote_name, emote_id, ext
+                    r#"<img class="e" alt="{emote_name}" src="https://cdn.discordapp.com/emojis/{emote_id}.{ext}"/>"#,
                 )
             })
             .into_owned(),
