@@ -1,7 +1,7 @@
-(function() {
+((() => {
   htmx.config.scrollBehavior = 'auto'
 
-  window.copyMessageLink = function(messageId) {
+  window.copyMessageLink = (messageId) => {
     const url = `${window.location.origin}/message/${messageId}`;
     navigator.clipboard.writeText(url);
   };
@@ -18,7 +18,7 @@
     return scrollContainer;
   }
 
-  document.body.addEventListener('htmx:configRequest', function(evt) {
+  document.body.addEventListener('htmx:configRequest', (evt) => {
     const currentScrollContainer = getScrollContainer();
     if (!currentScrollContainer) return;
 
@@ -30,7 +30,7 @@
     }
   });
 
-  document.body.addEventListener('htmx:afterSwap', function(evt) {
+  document.body.addEventListener('htmx:afterSwap', (evt) => {
     const currentScrollContainer = getScrollContainer();
 
     if (isProcessingOlderMessagesLoad && currentScrollContainer &&
@@ -59,7 +59,7 @@
     }
   });
 
-  document.body.addEventListener('htmx:afterSettle', function(evt) {
+  document.body.addEventListener('htmx:afterSettle', (evt) => {
     const currentScrollContainer = getScrollContainer();
     if (!currentScrollContainer) return;
 
@@ -69,20 +69,17 @@
       targetMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
       targetMessage.setAttribute('data-scrolled', 'true');
     } else if (!targetMessage && evt.detail.target && evt.detail.target.id === 'content') {
-      const requestUrl = evt.detail.xhr.responseURL || (evt.detail.requestConfig && evt.detail.requestConfig.path);
+      const requestUrl = evt.detail.xhr.responseURL || (evt.detail.requestConfig?.path);
       if (requestUrl) {
         const channelPageMatch = requestUrl.match(/\/channel\/\d+\/(\d+)/);
         if (channelPageMatch) {
-          const pageNum = parseInt(channelPageMatch[1], 10);
+          const pageNum = Number.parseInt(channelPageMatch[1], 10);
           if (pageNum === 0 && !requestUrl.includes('direction=') && 
-              !(evt.detail.requestConfig && 
-                evt.detail.requestConfig.triggeringEvent && 
-                evt.detail.requestConfig.triggeringEvent.detail && 
-                evt.detail.requestConfig.triggeringEvent.detail.isChannelUpdate)) {
+              !(evt.detail.requestConfig?.triggeringEvent?.detail?.isChannelUpdate)) {
             currentScrollContainer.scrollTop = currentScrollContainer.scrollHeight;
           }
         }
       }
     }
   });
-}());
+})());
