@@ -24,8 +24,7 @@
 
     if (
       evt.detail.path.includes("?direction=up") &&
-      evt.detail.triggeringEvent &&
-      evt.detail.triggeringEvent.type === "intersect"
+      evt.detail.triggeringEvent?.type === "intersect"
     ) {
       originalScrollHeight = currentScrollContainer.scrollHeight;
       originalScrollTop = currentScrollContainer.scrollTop;
@@ -39,8 +38,7 @@
     if (
       isProcessingOlderMessagesLoad &&
       currentScrollContainer &&
-      evt.detail.requestConfig.path &&
-      evt.detail.requestConfig.path.includes("?direction=up")
+      evt.detail.requestConfig.path?.includes("?direction=up")
     ) {
       const newScrollHeight = currentScrollContainer.scrollHeight;
       const addedHeight = newScrollHeight - originalScrollHeight;
@@ -84,11 +82,7 @@
     ) {
       targetMessage.scrollIntoView({ behavior: "smooth", block: "start" });
       targetMessage.setAttribute("data-scrolled", "true");
-    } else if (
-      !targetMessage &&
-      evt.detail.target &&
-      evt.detail.target.id === "content"
-    ) {
+    } else if (!targetMessage && evt.detail.target?.id === "content") {
       const requestUrl =
         evt.detail.xhr.responseURL || evt.detail.requestConfig?.path;
       if (requestUrl) {
