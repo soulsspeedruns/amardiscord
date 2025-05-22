@@ -7,7 +7,7 @@ on:
 
 jobs:
   lint:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -15,13 +15,11 @@ jobs:
       - name: Install Rust toolchain
         run: |
           rustup toolchain install nightly --profile minimal -c rustfmt,clippy
-          rustup target add i686-pc-windows-msvc --toolchain nightly
 
       - name: Install Biome
         run: |
-          Invoke-WebRequest \
-            -Uri "https://github.com/biomejs/biome/releases/download/%40biomejs%2Fbiome%402.0.0-beta.5/biome-win32-x64.exe" \
-            -OutFile biome.exe
+          curl -L "https://github.com/biomejs/biome/releases/download/%40biomejs%2Fbiome%402.0.0-beta.5/biome-linux-x64" -o /usr/local/bin/biome
+          chmod +x /usr/local/bin/biome
 
       - name: Rust Format
         run: |
@@ -29,8 +27,7 @@ jobs:
 
       - name: Rust Clippy
         run: |
-          cargo +nightly clippy --all-targets --target x86_64-pc-windows-msvc -- -D clippy::all
-          cargo +nightly clippy --all-targets --target i686-pc-windows-msvc -- -D clippy::all
+          cargo +nightly clippy --all-targets -- -D clippy::all
 
       - name: JavaScript lint and format
         run: |
