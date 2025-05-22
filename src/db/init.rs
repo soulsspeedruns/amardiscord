@@ -83,6 +83,13 @@ pub(crate) fn cache(db: &Connection) -> Result<(), db::Error> {
     )?;
 
     info!("Caching page numbers...");
+
+    // Algorithm of this query:
+    // - group messages by channel_id
+    // - extract the row number within the group
+    // - page_number := (row_number - 1) / page_size the -1 is because the row
+    //   numbers start from 1, the division truncates. this way, messages from n *
+    //   page_size to (n + 1) * page_size - 1 are at page n.
     db.execute(
         r#"
         INSERT INTO messages_pages (page, messages_rowid, channel_id)
