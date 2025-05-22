@@ -2,31 +2,31 @@
 
 /* Light Mode Variables */
 :root {
-  --color-bg: #fafaf0; /* Light gray with a hint of burlywood for the background */
-  --color-primary-text: #4a473a; /* Dark gray veering towards burlywood for primary text */
-  --color-secondary-text: #615f53; /* Medium gray with a burlywood undertone for secondary text */
-  --color-tertiary-text: #797761; /* Slightly lighter gray also leaning towards burlywood for tertiary text */
-  --color-border: #d2cfc4; /* Light gray border with a burlywood hue */
-  --color-accent1: #8b5a2b; /* Darker burlywood for usernames - more distinct */
-  --color-accent2: #cdaa7d; /* A slightly darker shade for the second accent */
-  --color-accent3: #9b7d4e; /* A more muted, darker shade for timestamps */
-  --color-accent4: #b0a290; /* A muted, earthy tone for the fourth accent */
-  --color-accent5: #a05d4e; /* Muted brick red for special highlights */
+  --color-bg: #ffffff; /* White */
+  --color-primary-text: #23272a; /* Not quite black */
+  --color-secondary-text: #2c2f33; /* Dark, but not black */
+  --color-tertiary-text: #99aab5; /* Greyple */
+  --color-border: #99aab5; /* Greyple */
+  --color-accent1: #7289da; /* Blurple */
+  --color-accent2: #5865f2; /* New Blurple */
+  --color-accent3: #99aab5; /* Greyple for timestamps */
+  --color-accent4: #57f287; /* Green */
+  --color-accent5: #ed4245; /* Red */
 }
 
 /* Dark Mode Variables */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg: #35322a; /* Dark gray with a hint of burlywood for the background */
-    --color-primary-text: #dddad0; /* Light gray veering towards burlywood for primary text */
-    --color-secondary-text: #c7c3b8; /* Medium-light gray with a burlywood undertone for secondary text */
-    --color-tertiary-text: #b1ad9f; /* Even lighter gray also leaning towards burlywood for tertiary text */
-    --color-border: #504a41; /* Darker gray border with a burlywood hue */
-    --color-accent1: #e6b17a; /* Brighter burlywood for usernames in dark mode */
-    --color-accent2: #cdaa7d; /* A slightly darker shade for the second accent */
-    --color-accent3: #b89b6a; /* A more distinct shade for timestamps in dark mode */
-    --color-accent4: #b0a290; /* A muted, earthy tone for the fourth accent */
-    --color-accent5: #c17a6b; /* Brighter brick red for special highlights in dark mode */
+    --color-bg: #23272a; /* Not quite black */
+    --color-primary-text: #ffffff; /* White */
+    --color-secondary-text: #99aab5; /* Greyple */
+    --color-tertiary-text: #b9bbbe; /* Lighter Greyple (Discord's text color on dark bg) */
+    --color-border: #2c2f33; /* Dark, but not black */
+    --color-accent1: #7289da; /* Blurple */
+    --color-accent2: #5865f2; /* New Blurple */
+    --color-accent3: #99aab5; /* Greyple for timestamps */
+    --color-accent4: #57f287; /* Green */
+    --color-accent5: #ed4245; /* Red */
   }
 }
 
