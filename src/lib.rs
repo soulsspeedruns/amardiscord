@@ -1,33 +1,15 @@
 use std::fmt::Display;
 
 use askama_escape::escape_html;
-use axum::response::{Html, IntoResponse, Response};
 use chrono::{DateTime, Utc};
 use once_cell::sync::Lazy;
 use regex::{Captures, Regex};
 use serde::Deserialize;
-use thiserror::Error;
 
 pub mod db;
 pub mod search;
 pub mod serve;
 pub mod templates;
-
-#[derive(Error, Debug)]
-pub enum Error {
-    #[error("serve")]
-    Serve(#[from] serve::Error),
-    #[error("database")]
-    Database(#[from] db::Error),
-}
-
-impl IntoResponse for Error {
-    fn into_response(self) -> Response {
-        Html(format!("{self:?}")).into_response()
-    }
-}
-
-pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Default)]
 pub struct Content {

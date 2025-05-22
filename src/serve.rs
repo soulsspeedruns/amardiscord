@@ -17,7 +17,7 @@ use crate::search::SearchQuery;
 use crate::templates::{
     ChannelListTemplate, IndexTemplate, LayoutTemplate, MessagePageTemplate, SearchTemplate,
 };
-use crate::{Result, ScrollDirection};
+use crate::ScrollDirection;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -34,6 +34,14 @@ pub enum Error {
     #[error("retrieving search results")]
     GetSearch(db::Error),
 }
+
+impl IntoResponse for Error {
+    fn into_response(self) -> Response {
+        Html(format!("{self:?}")).into_response()
+    }
+}
+
+pub type Result<T> = std::result::Result<T, Error>;
 
 pub async fn serve() -> Result<()> {
     macro_rules! static_get {
@@ -65,7 +73,7 @@ pub async fn serve() -> Result<()> {
     let app = app.with_state(state);
     let listener = TcpListener::bind("0.0.0.0:3000").await.map_err(Error::Axum)?;
 
-    Ok(axum::serve(listener, app.into_make_service()).await.map_err(Error::Axum)?)
+    axum::serve(listener, app.into_make_service()).await.map_err(Error::Axum)
 }
 
 #[derive(Deserialize, Default)]
@@ -78,12 +86,12 @@ async fn task<F, T, E>(f: F) -> Result<T>
 where
     F: FnOnce() -> std::result::Result<T, E> + Send + 'static,
     T: Send + 'static,
-    E: Send + Into<crate::Error> + 'static,
+    E: Send + Into<Error> + 'static,
 {
     match task::spawn_blocking(f).await {
         Ok(Ok(output)) => Ok(output),
         Ok(Err(e)) => Err(e.into()),
-        Err(e) => Err(Error::Join(e).into()),
+        Err(e) => Err(Error::Join(e)),
     }
 }
 

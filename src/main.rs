@@ -1,5 +1,5 @@
-use amardiscord::Result;
 use clap::{Parser, Subcommand};
+use tracing::error;
 use tracing_subscriber::filter::LevelFilter;
 
 #[derive(Parser)]
@@ -18,7 +18,7 @@ enum CliCommand {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
     tracing_subscriber::fmt()
         .with_max_level(LevelFilter::INFO)
         .with_thread_ids(true)
@@ -30,9 +30,15 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        CliCommand::Build => amardiscord::db::build().await?,
-        CliCommand::Serve => amardiscord::serve::serve().await?,
+        CliCommand::Build => {
+            if let Err(e) = amardiscord::db::build().await {
+                error!("Building database: {e}");
+            }
+        },
+        CliCommand::Serve => {
+            if let Err(e) = amardiscord::serve::serve().await {
+                error!("Server error: {e}");
+            }
+        },
     }
-
-    Ok(())
 }
