@@ -82,23 +82,25 @@
     ) {
       targetMessage.scrollIntoView({ behavior: "smooth", block: "start" });
       targetMessage.setAttribute("data-scrolled", "true");
-    } else if (!targetMessage && evt.detail.target?.id === "content") {
-      const requestUrl =
-        evt.detail.xhr.responseURL || evt.detail.requestConfig?.path;
-      if (requestUrl) {
-        const channelPageMatch = requestUrl.match(/\/channel\/\d+\/(\d+)/);
-        if (channelPageMatch) {
-          const pageNum = Number.parseInt(channelPageMatch[1], 10);
-          if (
-            pageNum === 0 &&
-            !requestUrl.includes("direction=") &&
-            !evt.detail.requestConfig?.triggeringEvent?.detail?.isChannelUpdate
-          ) {
-            currentScrollContainer.scrollTop =
-              currentScrollContainer.scrollHeight;
-          }
-        }
-      }
+      return;
+    }
+
+    if (targetMessage || evt.detail.target?.id !== "content") return;
+
+    const requestUrl =
+      evt.detail.xhr.responseURL || evt.detail.requestConfig?.path;
+    if (!requestUrl) return;
+
+    const channelPageMatch = requestUrl.match(/\/channel\/\d+\/(\d+)/);
+    if (!channelPageMatch) return;
+
+    const pageNum = Number.parseInt(channelPageMatch[1], 10);
+    if (
+      pageNum === 0 &&
+      !requestUrl.includes("direction=") &&
+      !evt.detail.requestConfig?.triggeringEvent?.detail?.isChannelUpdate
+    ) {
+      currentScrollContainer.scrollTop = currentScrollContainer.scrollHeight;
     }
   });
 })();
