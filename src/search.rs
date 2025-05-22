@@ -36,6 +36,9 @@ pub struct SearchQuery {
 }
 
 impl SearchQuery {
+    /// Builds a prepared FTS search query statement.
+    ///
+    /// Returns the SQL query and, separately, the FTS query as parameter list.
     pub fn build(self) -> Result<(String, Vec<String>), db::Error> {
         let mut query = String::new();
         let mut params = vec![];
@@ -56,16 +59,19 @@ impl SearchQuery {
         )
         .map_err(db::Error::SearchQueryBuild)?;
 
+        // If the search query has a username defined, add a clause for it.
         if let Some(username) = self.username.map(fts_query) {
             writeln!(query, r#"messages_fts.username MATCH ?{} OR"#, params.len() + 1)
                 .map_err(db::Error::SearchQueryBuild)?;
             params.push(format!("*\"{username}\"*"));
         }
 
+        // Unconditionally add a clause for content.
         writeln!(query, r#"messages_fts.content MATCH ?{}"#, params.len() + 1)
             .map_err(db::Error::SearchQueryBuild)?;
         params.push(fts_query(self.content));
 
+        // Order by message date.
         writeln!(query, r#"ORDER BY messages.sent_at DESC;"#)
             .map_err(db::Error::SearchQueryBuild)?;
 
