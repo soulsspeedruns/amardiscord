@@ -38,7 +38,7 @@
     if (
       isProcessingOlderMessagesLoad &&
       currentScrollContainer &&
-      evt.detail.requestConfig.path?.includes("?direction=up")
+      (evt.detail.requestConfig.path ?? "").includes("?direction=up")
     ) {
       const newScrollHeight = currentScrollContainer.scrollHeight;
       const addedHeight = newScrollHeight - originalScrollHeight;
