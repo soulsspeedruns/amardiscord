@@ -17,12 +17,22 @@ jobs:
           rustup toolchain install nightly --profile minimal -c rustfmt,clippy
           rustup target add i686-pc-windows-msvc --toolchain nightly
 
-      - name: Format
+      - name: Install Biome
+        run: |
+          Invoke-WebRequest \
+            -Uri "https://github.com/biomejs/biome/releases/download/%40biomejs%2Fbiome%402.0.0-beta.5/biome-win32-x64.exe" \
+            -OutFile biome.exe
+
+      - name: Rust Format
         run: |
           cargo +nightly fmt --all -- --check
 
-      - name: Clippy
+      - name: Rust Clippy
         run: |
           cargo +nightly clippy --all-targets --target x86_64-pc-windows-msvc -- -D clippy::all
           cargo +nightly clippy --all-targets --target i686-pc-windows-msvc -- -D clippy::all
 
+      - name: JavaScript lint and format
+        run: |
+          biome lint --error-on-warnings src/static/index.js
+          biome format --error-on-warnings --indent-style=space src/static/index.js
