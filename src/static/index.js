@@ -1,5 +1,5 @@
-((() => {
-  htmx.config.scrollBehavior = 'auto'
+(() => {
+  htmx.config.scrollBehavior = "auto";
 
   window.copyMessageLink = (messageId) => {
     const url = `${window.location.origin}/message/${messageId}`;
@@ -13,28 +13,35 @@
 
   function getScrollContainer() {
     if (!scrollContainer) {
-      scrollContainer = document.querySelector('#content');
+      scrollContainer = document.querySelector("#content");
     }
     return scrollContainer;
   }
 
-  document.body.addEventListener('htmx:configRequest', (evt) => {
+  document.body.addEventListener("htmx:configRequest", (evt) => {
     const currentScrollContainer = getScrollContainer();
     if (!currentScrollContainer) return;
 
-    if (evt.detail.path.includes('?direction=up') &&
-        evt.detail.triggeringEvent && evt.detail.triggeringEvent.type === 'intersect') {
+    if (
+      evt.detail.path.includes("?direction=up") &&
+      evt.detail.triggeringEvent &&
+      evt.detail.triggeringEvent.type === "intersect"
+    ) {
       originalScrollHeight = currentScrollContainer.scrollHeight;
       originalScrollTop = currentScrollContainer.scrollTop;
       isProcessingOlderMessagesLoad = true;
     }
   });
 
-  document.body.addEventListener('htmx:afterSwap', (evt) => {
+  document.body.addEventListener("htmx:afterSwap", (evt) => {
     const currentScrollContainer = getScrollContainer();
 
-    if (isProcessingOlderMessagesLoad && currentScrollContainer &&
-        evt.detail.requestConfig.path && evt.detail.requestConfig.path.includes('?direction=up')) {
+    if (
+      isProcessingOlderMessagesLoad &&
+      currentScrollContainer &&
+      evt.detail.requestConfig.path &&
+      evt.detail.requestConfig.path.includes("?direction=up")
+    ) {
       const newScrollHeight = currentScrollContainer.scrollHeight;
       const addedHeight = newScrollHeight - originalScrollHeight;
 
@@ -44,42 +51,60 @@
       isProcessingOlderMessagesLoad = false;
     }
 
-    const headerChannelId = evt.detail.xhr.getResponseHeader('X-Current-Channel-Id');
-    const channelsElement = document.getElementById('channels');
+    const headerChannelId = evt.detail.xhr.getResponseHeader(
+      "X-Current-Channel-Id",
+    );
+    const channelsElement = document.getElementById("channels");
 
     if (headerChannelId && channelsElement) {
       const requestPath = evt.detail.requestConfig.path;
-      const isChannelListUpdateRequest = requestPath.startsWith('/channels');
+      const isChannelListUpdateRequest = requestPath.startsWith("/channels");
 
       if (!isChannelListUpdateRequest) {
-        channelsElement.setAttribute('hx-get', `/channels?current_channel_id=${headerChannelId}`);
+        channelsElement.setAttribute(
+          "hx-get",
+          `/channels?current_channel_id=${headerChannelId}`,
+        );
         htmx.process(channelsElement);
-        htmx.trigger(channelsElement, 'load', { isChannelUpdate: true });
+        htmx.trigger(channelsElement, "load", { isChannelUpdate: true });
       }
     }
   });
 
-  document.body.addEventListener('htmx:afterSettle', (evt) => {
+  document.body.addEventListener("htmx:afterSettle", (evt) => {
     const currentScrollContainer = getScrollContainer();
     if (!currentScrollContainer) return;
 
-    const targetMessage = document.getElementById('target-message');
+    const targetMessage = document.getElementById("target-message");
 
-    if (targetMessage && !targetMessage.hasAttribute('data-scrolled') && currentScrollContainer.contains(targetMessage)) {
-      targetMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      targetMessage.setAttribute('data-scrolled', 'true');
-    } else if (!targetMessage && evt.detail.target && evt.detail.target.id === 'content') {
-      const requestUrl = evt.detail.xhr.responseURL || (evt.detail.requestConfig?.path);
+    if (
+      targetMessage &&
+      !targetMessage.hasAttribute("data-scrolled") &&
+      currentScrollContainer.contains(targetMessage)
+    ) {
+      targetMessage.scrollIntoView({ behavior: "smooth", block: "start" });
+      targetMessage.setAttribute("data-scrolled", "true");
+    } else if (
+      !targetMessage &&
+      evt.detail.target &&
+      evt.detail.target.id === "content"
+    ) {
+      const requestUrl =
+        evt.detail.xhr.responseURL || evt.detail.requestConfig?.path;
       if (requestUrl) {
         const channelPageMatch = requestUrl.match(/\/channel\/\d+\/(\d+)/);
         if (channelPageMatch) {
           const pageNum = Number.parseInt(channelPageMatch[1], 10);
-          if (pageNum === 0 && !requestUrl.includes('direction=') && 
-              !(evt.detail.requestConfig?.triggeringEvent?.detail?.isChannelUpdate)) {
-            currentScrollContainer.scrollTop = currentScrollContainer.scrollHeight;
+          if (
+            pageNum === 0 &&
+            !requestUrl.includes("direction=") &&
+            !evt.detail.requestConfig?.triggeringEvent?.detail?.isChannelUpdate
+          ) {
+            currentScrollContainer.scrollTop =
+              currentScrollContainer.scrollHeight;
           }
         }
       }
     }
   });
-})());
+})();
