@@ -1,12 +1,11 @@
 use std::fmt::Write;
 
-use anyhow::Result;
 use itertools::Itertools;
 use rusqlite::Row;
 use serde::Deserialize;
 use textwrap_macros::dedent;
 
-use crate::{Message, MessageContent};
+use crate::{db, Message, MessageContent};
 
 pub struct SearchResult {
     pub message_rowid: u64,
@@ -24,6 +23,7 @@ impl SearchResult {
                 username: row.get(1)?,
                 avatar: row.get(2)?,
                 sent_at: row.get(3)?,
+                rowid: row.get(5)?,
             },
         })
     }
@@ -36,7 +36,10 @@ pub struct SearchQuery {
 }
 
 impl SearchQuery {
-    pub fn build(self) -> Result<(String, Vec<String>)> {
+    /// Builds a prepared FTS search query statement.
+    ///
+    /// Returns the SQL query and, separately, the FTS query as parameter list.
+    pub fn build(self) -> Result<(String, Vec<String>), db::Error> {
         let mut query = String::new();
         let mut params = vec![];
 
@@ -53,17 +56,24 @@ impl SearchQuery {
                 WHERE
                 "#
             )
-        )?;
+        )
+        .map_err(db::Error::SearchQueryBuild)?;
 
+        // If the search query has a username defined, add a clause for it.
         if let Some(username) = self.username.map(fts_query) {
-            writeln!(query, r#"messages_fts.username MATCH ?{} OR"#, params.len() + 1)?;
+            writeln!(query, r#"messages_fts.username MATCH ?{} OR"#, params.len() + 1)
+                .map_err(db::Error::SearchQueryBuild)?;
             params.push(format!("*\"{username}\"*"));
         }
 
-        writeln!(query, r#"messages_fts.content MATCH ?{}"#, params.len() + 1)?;
+        // Unconditionally add a clause for content.
+        writeln!(query, r#"messages_fts.content MATCH ?{}"#, params.len() + 1)
+            .map_err(db::Error::SearchQueryBuild)?;
         params.push(fts_query(self.content));
 
-        writeln!(query, r#"ORDER BY messages.sent_at DESC;"#)?;
+        // Order by message date.
+        writeln!(query, r#"ORDER BY messages.sent_at DESC;"#)
+            .map_err(db::Error::SearchQueryBuild)?;
 
         Ok((query, params))
     }

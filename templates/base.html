@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+  <head>
+    <script defer src="/htmx.min.js"></script>
+    <script defer src="/index.js"></script>
+    <link rel="stylesheet" href="/index.css"/>
+  </head>
+
+  <body>
+    <div id="search-bar" hx-swap-oob="true">
+      <input type="search" name="content" placeholder="Start typing to search..."
+            hx-get="/search" hx-trigger="input changed delay:500ms, query"
+            hx-target="#content" hx-swap="innerHTML show:bottom">
+      </input>
+    </div>
+
+    <aside id="channels" hx-get="/channels" hx-trigger="load">
+      loading...
+    </aside>
+
+    <div id="content">
+      {% block content %}{% endblock %}
+    </div>
+  </body>
+</html> 

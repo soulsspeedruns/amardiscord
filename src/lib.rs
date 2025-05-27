@@ -1,7 +1,6 @@
 use std::fmt::Display;
 
-use askama::Html;
-use askama_escape::Escaper;
+use askama_escape::escape_html;
 use chrono::{DateTime, Utc};
 use once_cell::sync::Lazy;
 use regex::{Captures, Regex};
@@ -39,6 +38,8 @@ pub struct Message {
     pub avatar: String,
     #[serde(rename = "sentAt")]
     pub sent_at: DateTime<Utc>,
+    #[serde(skip)]
+    pub rowid: u64,
 }
 
 #[derive(Debug)]
@@ -69,7 +70,7 @@ impl Display for MessageContent {
 // There are other Discord specific tags such as localized time, of the form
 // `<t:timestamp:R>`. They are not currently supported.
 impl<'de> Deserialize<'de> for MessageContent {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> std::result::Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
@@ -77,7 +78,7 @@ impl<'de> Deserialize<'de> for MessageContent {
 
         let input = String::deserialize(deserializer)?;
         let mut escaped = String::new();
-        Html.write_escaped(&mut escaped, &input).unwrap();
+        escape_html(&mut escaped, &input).unwrap();
 
         Ok(MessageContent(
             RE.replace_all(&escaped, |captures: &Captures| {
@@ -85,8 +86,7 @@ impl<'de> Deserialize<'de> for MessageContent {
                 let emote_name = &captures[2];
                 let emote_id = &captures[3];
                 format!(
-                    r#"<img class="e" alt="{}" src="https://cdn.discordapp.com/emojis/{}.{}"/>"#,
-                    emote_name, emote_id, ext
+                    r#"<img class="e" alt="{emote_name}" src="https://cdn.discordapp.com/emojis/{emote_id}.{ext}"/>"#,
                 )
             })
             .into_owned(),

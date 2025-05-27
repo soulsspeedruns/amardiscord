@@ -4,7 +4,7 @@
     <span class="avatar"><img alt="" src="{{ first_search_result.message.avatar }}"/></span>
     <span class="usr">{{ username }}</span>
     <span class="time">{{ first_search_result.message.sent_at }}</span>
-    <span class="jump-btn">Jump</span>
+    <a href="/message/{{ first_search_result.message_rowid }}" class="jump-btn">Jump</a>
   </li>
   <li class="msg">{{ first_search_result.message.content|escape("none") }}</li>
   {% for search_result in search_results %}
