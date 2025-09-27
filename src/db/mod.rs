@@ -35,28 +35,49 @@ const PAGE_SIZE: u64 = 100;
 async fn load_categories(path: &Path) -> Result<Vec<Category>, Error> {
     let path = path.join("categories");
 
+    let mut category_indices = Vec::new();
+
+    // List all files in the `categories` directory, looking for files named
+    // `<number>.json`.
+    let mut entries = fs::read_dir(&path).await?;
+    while let Some(entry) = entries.next_entry().await? {
+        let path = entry.path();
+
+        // Skip non-.json files.
+        if path.extension().and_then(|s| s.to_str()) != Some("json") {
+            break;
+        }
+
+        // Extract stems from filenames (e.g. `1.json` -> `1`).
+        let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+            break;
+        };
+
+        // Try parsing the stem into an integer and, if successful, save it.
+        if let Ok(category_index) = stem.parse::<i32>() {
+            category_indices.push(category_index);
+        }
+    }
+
+    // Category file names are ordered in the same way they are on a server.
+    // Sort them to replicate the server's structure.
+    category_indices.sort();
+
     let mut categories = Vec::new();
 
-    for i in 1.. {
+    // Load category files in the correct order.
+    for i in category_indices {
         let path = path.join(format!("{i}.json"));
-        if path.exists() {
-            let content = fs::read_to_string(path).await?;
-            let mut category: Category = serde_json::from_str(&content)?;
+        let content = fs::read_to_string(path).await?;
+        let mut category: Category = serde_json::from_str(&content)?;
 
-            for channel in &mut category.children {
-                if let Some(msgs) = channel.messages.as_mut() {
-                    msgs.sort_unstable_by(|a, b| b.sent_at.cmp(&a.sent_at));
-                }
+        for channel in &mut category.children {
+            if let Some(msgs) = channel.messages.as_mut() {
+                msgs.sort_unstable_by(|a, b| b.sent_at.cmp(&a.sent_at));
             }
-
-            categories.push(category);
-        } else {
-            break;
         }
 
-        if cfg!(debug_assertions) {
-            break;
-        }
+        categories.push(category);
     }
 
     Ok(categories)
