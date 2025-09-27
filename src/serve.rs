@@ -53,7 +53,7 @@ pub async fn serve() -> Result<()> {
     info!("Loading content...");
     let state = Arc::new(Database::new().unwrap());
 
-    info!("Starting app on http://localhost:3000");
+    info!("Starting app on http://0.0.0.0:3000");
 
     let app = Router::new()
         .route("/", get(|| async { Html(IndexTemplate::render()) }))
