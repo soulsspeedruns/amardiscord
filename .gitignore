@@ -2,5 +2,6 @@
 /target
 data
 data.tgz
-amardiscord.tar.gz
 amardiscord.sqlite
+amardiscord.tar.gz
+amardiscord-data.tar.gz
