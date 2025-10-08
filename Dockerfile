@@ -1,8 +1,12 @@
 FROM rust:alpine AS build
+ARG DATA_TARBALL_URL
 
-RUN apk add --no-cache build-base sqlite-dev
+RUN [ "$data_tarball_url" != "" ] || exit 1
+RUN apk add --no-cache build-base sqlite-dev curl
 WORKDIR /build
 COPY . .
+RUN curl -LsSf "$DATA_TARBALL_URL" -o /build/amardiscord-data.tar.gz
+RUN tar xf /build/amardiscord-data.tar.gz -C /build
 RUN cargo build --release --locked
 RUN /build/target/release/amardiscord build
 
