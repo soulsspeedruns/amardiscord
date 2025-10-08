@@ -4,7 +4,7 @@ A web UI for browsing Discord backups.
 
 ## Usage
 
-`amardiscord` supports Discord udmps extracted via [this tool](https://github.com/StenniHub/discord-backup).
+`amardiscord` supports Discord dumps extracted via [this tool](https://github.com/StenniHub/discord-backup).
 
 Once you have a dump, extract it into the `./data` directory in the root of this repository.
 
@@ -22,8 +22,6 @@ amardiscord build
 # Serve the content
 amardiscord serve
 ```
-
-You can take the 
 
 ### Docker image
 
