@@ -1,23 +1,42 @@
 # amardiscord
 
-A tool for reading Discord backups.
+A web UI for browsing Discord backups.
 
 ## Usage
 
-First, you need to create a SQLite database from the JSON dump:
+`amardiscord` supports Discord dumps extracted via [this tool](https://github.com/StenniHub/discord-backup).
+
+Once you have a dump, extract it into the `./data` directory in the root of this repository.
+
+### Free-standing compilation
+
+You can install `amardiscord` via Cargo:
 
 ```
-./amardiscord build
+# Compile the code
+cargo install --locked --git https://github.com/soulsspeedruns/amardiscord
+
+# Build the SQLite database from the dump
+amardiscord build
+
+# Serve the content
+amardiscord serve
 ```
 
-Then, you can serve the content:
+### Docker image
+
+You can also run `amardiscord` as a Docker image. During the build process, the Discord dump
+extracted in `./data` will be automatically built into a SQLite database and embedded in the
+image, so you will be able to run it without requiring any other dependencies.
 
 ```
-./amardiscord serve
-```
+# Clone the repo
+git clone https://github.com/soulsspeedruns/amardiscord && cd amardiscord
 
-## Build
+# Copy the backup in the `./data` directory
+cp -a /path/to/discord/backup ./data
 
-```
-cargo build --release
+# Build and run the Docker image
+docker build -t amardiscord .
+docker run --rm -it -p 3000:3000 amardiscord
 ```
