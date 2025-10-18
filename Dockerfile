@@ -1,7 +1,7 @@
 FROM rust:alpine AS build
 ARG DATA_TARBALL_URL
 
-RUN [ "$data_tarball_url" != "" ] || exit 1
+RUN [ "$DATA_TARBALL_URL" != "" ] || exit 1
 RUN apk add --no-cache build-base sqlite-dev curl
 WORKDIR /build
 COPY . .
