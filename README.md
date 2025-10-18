@@ -25,18 +25,17 @@ amardiscord serve
 
 ### Docker image
 
-You can also run `amardiscord` as a Docker image. During the build process, the Discord dump
-extracted in `./data` will be automatically built into a SQLite database and embedded in the
+You can also run `amardiscord` as a Docker image. During the build process, a Discord dump
+will be retrieved from a HTTP URL, built into a SQLite database and embedded in the
 image, so you will be able to run it without requiring any other dependencies.
+
+Make sure to _always_ specify the `DATA_TARBALL_URL` build argument when building the image.
 
 ```
 # Clone the repo
 git clone https://github.com/soulsspeedruns/amardiscord && cd amardiscord
 
-# Copy the backup in the `./data` directory
-cp -a /path/to/discord/backup ./data
-
 # Build and run the Docker image
-docker build -t amardiscord .
+docker build -t amardiscord . --build-arg DATA_TARBALL_URL=https://some.site/amardiscord-data.tar.gz
 docker run --rm -it -p 3000:3000 amardiscord
 ```
