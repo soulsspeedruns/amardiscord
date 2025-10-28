@@ -6,7 +6,7 @@ RUN apk add --no-cache build-base sqlite-dev curl
 WORKDIR /build
 COPY . .
 RUN curl -LsSf "$DATA_TARBALL_URL" -o /build/amardiscord-data.tar.gz
-RUN tar xf /build/amardiscord-data.tar.gz -C /build
+RUN unzip /build/amardiscord-data.tar.gz -d /build
 RUN cargo build --release --locked
 RUN /build/target/release/amardiscord build
 
