@@ -1,14 +1,19 @@
 FROM rust:alpine AS build
-ARG DATA_TARBALL_URL
+ARG DATA_ARCHIVE_URL
 
-RUN [ "$DATA_TARBALL_URL" != "" ] || exit 1
+RUN [ "$DATA_ARCHIVE_URL" != "" ] || exit 1
 RUN apk add --no-cache build-base sqlite-dev curl
 WORKDIR /build
 COPY . .
-RUN curl -LsSf "$DATA_TARBALL_URL" -o /build/amardiscord-data.tar.gz
-RUN unzip /build/amardiscord-data.tar.gz -d /build
+
+# Try extracting the archive both as a tarball and as a zip file.
+# One of the two will work.
+RUN curl -LsSf "$DATA_ARCHIVE_URL" -o /build/amardiscord-data
+RUN unzip  /build/amardiscord-data -d /build/data || true
+RUN tar xf /build/amardiscord-data -C /build/data || true
+
 RUN cargo build --release --locked
-RUN /build/target/release/amardiscord build
+RUN /build/target/release/amardiscord build || exit 1
 
 FROM alpine:latest
 
