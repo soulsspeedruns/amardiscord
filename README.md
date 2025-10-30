@@ -4,15 +4,13 @@ A web UI for browsing Discord backups.
 
 ## Usage
 
-`amardiscord` supports Discord dumps extracted via [this tool](https://github.com/StenniHub/discord-backup).
+`amardiscord` supports Discord backups extracted via [this tool](https://github.com/StenniHub/discord-backup).
 
-Once you have a dump, extract it into the `./data` directory in the root of this repository.
-
-The dump should have this tree structure:
+The backup should have this tree structure:
 
 ```
-$ ls --tree data
- data
+$ ls --tree my-server-backup
+ my-server-backup
 ├──  1168694611581865984.json
 └──  1168694611581865984
     ├──  categories
@@ -41,8 +39,8 @@ You can install `amardiscord` via Cargo:
 # Compile the code
 cargo install --locked --git https://github.com/soulsspeedruns/amardiscord
 
-# Build the SQLite database from the dump
-amardiscord build
+# Build the SQLite database from the backup
+amardiscord build /path/to/my-server-backup
 
 # Serve the content
 amardiscord serve
@@ -50,17 +48,22 @@ amardiscord serve
 
 ### Docker image
 
-You can also run `amardiscord` as a Docker image. During the build process, a Discord dump
-will be retrieved from a HTTP URL, built into a SQLite database and embedded in the
-image, so you will be able to run it without requiring any other dependencies.
+You can also deploy `amardiscord` as a Docker image. You will need to build your
+`amardiscord.sqlite` database file via the CLI first.
 
-Make sure to _always_ specify the `DATA_ARCHIVE_URL` build argument when building the image.
+Then, build and start the container, mounting the database file at `/app/amardiscord.sqlite`.
 
 ```
 # Clone the repo
 git clone https://github.com/soulsspeedruns/amardiscord && cd amardiscord
 
+# Build the database file
+cargo run --release -- build /path/to/my-server-backup
+
 # Build and run the Docker image
-docker build -t amardiscord . --build-arg DATA_ARCHIVE_URL=https://some.site/amardiscord-data.tar.gz
-docker run --rm -it -p 3000:3000 amardiscord
+docker build -t amardiscord .
+docker run --rm -it \
+    -p 3000:3000 \
+    -v ./amardiscord.sqlite:/app/amardiscord.sqlite:ro \
+    amardiscord
 ```
