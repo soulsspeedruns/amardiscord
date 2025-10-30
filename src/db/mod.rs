@@ -16,24 +16,30 @@ mod init;
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("I/O error")]
+    #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("serialization error")]
+    #[error("serialization error: {0}")]
     Serde(#[from] serde_json::Error),
-    #[error("database connection pool error")]
+    #[error("database connection pool error: {0}")]
     Pool(#[from] r2d2::Error),
-    #[error("database error")]
+    #[error("database error: {0}")]
     Rusqlite(#[from] rusqlite::Error),
     #[error("Loading channel {0}: {1}")]
     LoadChannel(PathBuf, std::io::Error),
-    #[error("Search query build error")]
+    #[error("Search query build error: {0}")]
     SearchQueryBuild(std::fmt::Error),
+    #[error("{0}")]
+    Generic(String),
 }
 
 const PAGE_SIZE: u64 = 100;
 
 async fn load_categories(path: &Path) -> Result<Vec<Category>, Error> {
     let path = path.join("categories");
+
+    if !path.exists() {
+        return Err(Error::Generic(format!("{path:?} not found.")));
+    }
 
     let mut category_indices = Vec::new();
 
@@ -109,8 +115,8 @@ async fn load_channels(path: &Path) -> Result<Vec<Channel>, Error> {
     Ok(channels)
 }
 
-pub async fn load_content() -> Result<Content, Error> {
-    let mut entries = fs::read_dir("./data").await?;
+pub async fn load_content(path: &Path) -> Result<Content, Error> {
+    let mut entries = fs::read_dir(path).await?;
 
     while let Some(entry) = entries.next_entry().await? {
         let path = entry.path();
@@ -136,14 +142,14 @@ impl Database {
         ))
     }
 
-    async fn initialize(&mut self) -> Result<(), Error> {
+    async fn initialize(&mut self, path: &Path) -> Result<(), Error> {
         let db = self.0.get()?;
 
         // Initialize database
         init::initialize(&db)?;
 
         // Load content
-        let content = load_content().await?;
+        let content = load_content(path).await?;
         let mut categories = content.categories;
         if !content.channels.is_empty() {
             categories
@@ -251,6 +257,12 @@ impl Database {
     }
 }
 
-pub async fn build() -> Result<(), Error> {
-    Database::new()?.initialize().await
+pub async fn build(path: Option<PathBuf>) -> Result<(), Error> {
+    let sqlite_path = Path::new("amardiscord.sqlite");
+
+    if sqlite_path.exists() {
+        fs::remove_file(sqlite_path).await?;
+    }
+
+    Database::new()?.initialize(path.as_deref().unwrap_or_else(|| Path::new("./data"))).await
 }
