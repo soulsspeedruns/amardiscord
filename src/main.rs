@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::{Parser, Subcommand};
 use tracing::error;
 use tracing_subscriber::filter::LevelFilter;
@@ -12,7 +14,10 @@ struct Cli {
 #[derive(Subcommand)]
 enum CliCommand {
     /// Build the message database.
-    Build,
+    Build {
+        /// Path to the backup directory (default: `./data`).
+        path: Option<PathBuf>,
+    },
     /// Serve the content.
     Serve,
 }
@@ -30,8 +35,8 @@ async fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        CliCommand::Build => {
-            if let Err(e) = amardiscord::db::build().await {
+        CliCommand::Build { path } => {
+            if let Err(e) = amardiscord::db::build(path).await {
                 error!("Building database: {e}");
             }
         },
