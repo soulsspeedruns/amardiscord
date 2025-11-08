@@ -8,9 +8,7 @@ RUN cargo build --release --locked
 
 FROM alpine:latest
 
-RUN apk add --no-cache bash
 WORKDIR /app
-COPY serve.sh .
-COPY --from=build /build/target/release/amardiscord /app/target/release/amardiscord
+COPY --from=build /build/target/release/amardiscord /app/amardiscord
 
-ENTRYPOINT ["/bin/bash", "serve.sh"]
+ENTRYPOINT ["/app/amardiscord", "serve"]
