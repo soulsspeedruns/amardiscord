@@ -9,10 +9,9 @@ A web UI for browsing Discord backups.
 The backup should have this tree structure:
 
 ```
-$ ls --tree my-server-backup
- my-server-backup
-├──  1168694611581865984.json
-└──  1168694611581865984
+$ ls --tree data
+ data
+└──  my_discord_backup
     ├──  categories
     │   ├──  1.json
     │   ├──  10.json
@@ -29,7 +28,7 @@ $ ls --tree my-server-backup
         └──  1.json
 ```
 
-Note that the top-level `.json` file is ignored, and `other_channels` is optional.
+Note that any top-level `.json` files are ignored, and `other_channels` is optional.
 
 ### Free-standing compilation
 
@@ -39,11 +38,13 @@ You can install `amardiscord` via Cargo:
 # Compile the code
 cargo install --locked --git https://github.com/soulsspeedruns/amardiscord
 
-# Build the SQLite database from the backup
-amardiscord build /path/to/my-server-backup
+# Build the SQLite database from the backup (no argument defaults to ./data)
+amardiscord build /path/to/backup
 
 # Serve the content
 amardiscord serve
+
+Alternatively, serve.sh performs the build and serve steps for you by first checking whether the SQLite daatabase already exists.
 ```
 
 ### Docker image
@@ -57,13 +58,12 @@ Then, build and start the container, mounting the database file at `/app/amardis
 # Clone the repo
 git clone https://github.com/soulsspeedruns/amardiscord && cd amardiscord
 
-# Build the database file
-cargo run --release -- build /path/to/my-server-backup
-
-# Build and run the Docker image
+# Build the Docker image
 docker build -t amardiscord .
+
+# Run the Docker container and mount the data directory containing your Discord backup (example above)
 docker run --rm -it \
     -p 3000:3000 \
-    -v ./amardiscord.sqlite:/app/amardiscord.sqlite:ro \
+    -v ./data:/app/data \
     amardiscord
 ```

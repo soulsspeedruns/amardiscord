@@ -138,7 +138,7 @@ impl Database {
         Ok(Self(
             Pool::builder()
                 .max_size(32)
-                .build(SqliteConnectionManager::file("amardiscord.sqlite"))?,
+                .build(SqliteConnectionManager::file("./data/amardiscord.sqlite"))?,
         ))
     }
 
@@ -258,7 +258,7 @@ impl Database {
 }
 
 pub async fn build(path: Option<PathBuf>) -> Result<(), Error> {
-    let sqlite_path = Path::new("amardiscord.sqlite");
+    let sqlite_path = Path::new("./data/amardiscord.sqlite");
 
     if sqlite_path.exists() {
         fs::remove_file(sqlite_path).await?;
