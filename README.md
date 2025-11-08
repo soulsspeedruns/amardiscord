@@ -44,7 +44,9 @@ amardiscord build /path/to/backup
 # Serve the content
 amardiscord serve
 
-Alternatively, serve.sh performs the build and serve steps for you by first checking whether the SQLite daatabase already exists.
+# Alternatively, amardiscord serve will build the database if it doesn't exist
+# (no argument defaults to ./data)
+amardiscord serve /path/to/backup
 ```
 
 ### Docker image
