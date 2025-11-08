@@ -9,7 +9,7 @@ use tokio::fs;
 use crate::search::{SearchQuery, SearchResult};
 use crate::{
     Category, Channel, ChannelCategory, ChannelList, ChannelListEntry, Content, Message,
-    MessageContent,
+    MessageContent, SQLITE_ARCHIVE_PATH,
 };
 
 mod init;
@@ -138,7 +138,7 @@ impl Database {
         Ok(Self(
             Pool::builder()
                 .max_size(32)
-                .build(SqliteConnectionManager::file("./data/amardiscord.sqlite"))?,
+                .build(SqliteConnectionManager::file(SQLITE_ARCHIVE_PATH))?,
         ))
     }
 
@@ -258,7 +258,7 @@ impl Database {
 }
 
 pub async fn build(path: Option<PathBuf>) -> Result<(), Error> {
-    let sqlite_path = Path::new("./data/amardiscord.sqlite");
+    let sqlite_path = Path::new(SQLITE_ARCHIVE_PATH);
 
     if sqlite_path.exists() {
         fs::remove_file(sqlite_path).await?;
