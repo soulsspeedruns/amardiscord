@@ -11,6 +11,8 @@ pub mod search;
 pub mod serve;
 pub mod templates;
 
+pub const SQLITE_ARCHIVE_PATH: &str = "./data/amardiscord.sqlite";
+
 #[derive(Default)]
 pub struct Content {
     pub categories: Vec<Category>,

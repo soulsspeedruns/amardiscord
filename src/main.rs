@@ -1,5 +1,7 @@
+use std::path::{Path, PathBuf};
+
 use clap::{Parser, Subcommand};
-use tracing::error;
+use tracing::{error, info};
 use tracing_subscriber::filter::LevelFilter;
 
 #[derive(Parser)]
@@ -12,9 +14,15 @@ struct Cli {
 #[derive(Subcommand)]
 enum CliCommand {
     /// Build the message database.
-    Build,
+    Build {
+        /// Path to the backup directory (default: `./data`).
+        path: Option<PathBuf>,
+    },
     /// Serve the content.
-    Serve,
+    Serve {
+        /// Path to the backup directory (default: `./data`).
+        path: Option<PathBuf>,
+    },
 }
 
 #[tokio::main]
@@ -30,12 +38,21 @@ async fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        CliCommand::Build => {
-            if let Err(e) = amardiscord::db::build().await {
+        CliCommand::Build { path } => {
+            if let Err(e) = amardiscord::db::build(path).await {
                 error!("Building database: {e}");
             }
         },
-        CliCommand::Serve => {
+        CliCommand::Serve { path } => {
+            if !Path::new(amardiscord::SQLITE_ARCHIVE_PATH).exists() {
+                info!("Database file doesn't exist. Building it.");
+
+                if let Err(e) = amardiscord::db::build(path).await {
+                    error!("Building database: {e}");
+                    return;
+                }
+            }
+
             if let Err(e) = amardiscord::serve::serve().await {
                 error!("Server error: {e}");
             }
