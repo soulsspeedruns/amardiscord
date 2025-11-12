@@ -105,6 +105,6 @@
   });
 
   document.querySelector("button#burger").addEventListener("click", (evt) => {
-    document.body.classList.toggle("menu-closed");
+    document.body.classList.toggle("menu-open");
   });
 })();

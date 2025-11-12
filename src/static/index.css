@@ -63,11 +63,20 @@ a {
 
 #search-bar {
   width: 100%;
-  height: 3em;  /* TODO: Turn into constant */
+  height: 3em;
   display: flex;
-  justify-content: right;
+  justify-content: space-between;
   align-items: center;
   padding-right: 1em;
+}
+
+#search-bar > button {
+  padding: 0.5em 1.5em;
+  border: 2px transparent;
+  border-radius: 0.5em;
+  background-color: var(--color-bg);
+  color: var(--color-primary-text);
+  cursor: pointer;
 }
 
 #search-bar > input {
@@ -93,7 +102,6 @@ a {
   padding: 1em; /* Spacing inside the channels */
   height: calc(100vh - 3em); /* Full height */
   overflow-y: auto; /* Enable scrolling for overflow content */
-  transition: margin-left 0.3s;
 }
 
 #content {
@@ -103,13 +111,12 @@ a {
   overflow-y: auto;
   overflow-x: clip;
   transition: margin-left 0.3s, width 0.3s;
+  width: 100vw;
+  position: fixed;
+  background-color: var(--color-bg);
 }
 
-body.menu-closed #channels {
-  margin-left: -25%;
-}
-
-body.menu-closed #content {
+body:not(.menu-open) #content {
   margin-left: 0%;
 }
 
@@ -131,18 +138,14 @@ h2 {
 /* Responsive design */
 @media (max-width: 768px) {
   #channels {
-    width: 100%;
+    width: 70%;
   }
 
   #content {
-    margin-left: 100%;
+    margin-left: 70%;
   }
 
-  body.menu-closed #channels {
-    margin-left: -100%;
-  }
-
-  body.menu-closed #content {
+  body:not(.menu-open) #content {
     margin-left: 0%;
   }
 }
