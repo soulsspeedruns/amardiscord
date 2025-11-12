@@ -60,7 +60,8 @@ pub async fn serve() -> Result<()> {
         .route("/channels", get(channel_list))
         .route("/channel/{channel}/{page}", get(channel))
         .route("/message/{rowid}", get(message_page))
-        .route("/search", get(search));
+        .route("/search", get(search))
+        .route("/health", get(|| async { ([(header::CONTENT_TYPE, "text/plain")], "FrankerZ") }));
 
     let app = if cfg!(debug_assertions) {
         app.fallback_service(ServeDir::new("src/static"))
