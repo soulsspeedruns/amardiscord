@@ -11,4 +11,4 @@ FROM alpine:latest
 WORKDIR /app
 COPY --from=build /build/target/release/amardiscord /app/amardiscord
 
-ENTRYPOINT ["/app/amardiscord", "serve"]
+ENTRYPOINT ["/app/amardiscord", "/app/data"]
