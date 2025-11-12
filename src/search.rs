@@ -77,6 +77,10 @@ impl SearchQuery {
 
         Ok((query, params))
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.content.is_empty() && self.username.as_ref().is_none_or(String::is_empty)
+    }
 }
 
 // Risks of injection are prevented by whitelisting only alphanumeric characters

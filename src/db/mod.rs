@@ -205,6 +205,10 @@ impl Database {
     }
 
     pub fn get_search(&self, search_query: SearchQuery) -> Result<Vec<SearchResult>, Error> {
+        if search_query.is_empty() {
+            return Ok(Vec::new());
+        }
+
         let db = self.0.get()?;
 
         let (query, params) = search_query.build()?;
