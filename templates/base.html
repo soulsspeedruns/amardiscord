@@ -8,6 +8,7 @@
 
   <body>
     <div id="search-bar" hx-swap-oob="true">
+      <button id="burger">&#9776;</button>
       <input type="search" name="content" placeholder="Start typing to search..."
             hx-get="/search" hx-trigger="input changed delay:500ms, query"
             hx-target="#content" hx-swap="innerHTML show:bottom">

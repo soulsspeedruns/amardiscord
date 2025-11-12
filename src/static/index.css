@@ -54,6 +54,7 @@ body {
   line-height: 1.2; /* Improves readability */
   min-height: 100%; /* Ensures at least full viewport height */
   overflow-x: hidden; /* Hides horizontal scrollbar if not needed */
+  text-size-adjust: 100%;
 }
 
 a {
@@ -92,13 +93,24 @@ a {
   padding: 1em; /* Spacing inside the channels */
   height: calc(100vh - 3em); /* Full height */
   overflow-y: auto; /* Enable scrolling for overflow content */
+  transition: margin-left 0.3s;
 }
 
 #content {
   margin-left: 25%; /* Content starts after the channels div */
   padding: 1em; /* Spacing inside the content */
   height: calc(100vh - 3em); /* Full height */
-  overflow-y: auto; /* Enable scrolling for overflow content */
+  overflow-y: auto;
+  overflow-x: clip;
+  transition: margin-left 0.3s, width 0.3s;
+}
+
+body.menu-closed #channels {
+  margin-left: -25%;
+}
+
+body.menu-closed #content {
+  margin-left: 0%;
 }
 
 /* Style the list elements */
@@ -118,12 +130,20 @@ h2 {
 
 /* Responsive design */
 @media (max-width: 768px) {
-  #channels,
+  #channels {
+    width: 100%;
+  }
+
   #content {
-    float: none;
-    width: auto;
-    margin-left: 0;
-    height: auto;
+    margin-left: 100%;
+  }
+
+  body.menu-closed #channels {
+    margin-left: -100%;
+  }
+
+  body.menu-closed #content {
+    margin-left: 0%;
   }
 }
 
