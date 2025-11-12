@@ -30,7 +30,7 @@ $ ls --tree data
 
 Note that any top-level `.json` files are ignored, and `other_channels` is optional.
 
-### Free-standing compilation
+### Free-standing deployment
 
 You can install `amardiscord` via Cargo:
 
@@ -38,23 +38,13 @@ You can install `amardiscord` via Cargo:
 # Compile the code
 cargo install --locked --git https://github.com/soulsspeedruns/amardiscord
 
-# Build the SQLite database from the backup (no argument defaults to ./data)
-amardiscord build /path/to/backup
-
-# Serve the content
-amardiscord serve
-
-# Alternatively, amardiscord serve will build the database if it doesn't exist
-# (no argument defaults to ./data)
+# Build the SQLite cache database and serve the content (path is optional, defaults to `./data`).
 amardiscord serve /path/to/backup
 ```
 
 ### Docker image
 
-You can also deploy `amardiscord` as a Docker image. You will need to build your
-`amardiscord.sqlite` database file via the CLI first.
-
-Then, build and start the container, mounting the database file at `/app/amardiscord.sqlite`.
+You can also deploy `amardiscord` as a Docker image, mounting your Discord backup at `/app/data` in read-write mode.
 
 ```
 # Clone the repo
@@ -63,9 +53,15 @@ git clone https://github.com/soulsspeedruns/amardiscord && cd amardiscord
 # Build the Docker image
 docker build -t amardiscord .
 
-# Run the Docker container and mount the data directory containing your Discord backup (example above)
+# Run the Docker container and mount the data directory containing your Discord backup
 docker run --rm -it \
     -p 3000:3000 \
     -v ./data:/app/data \
     amardiscord
 ```
+
+#### Remount the backup directory in read-only mode
+
+On the first run, a SQLite cache database named `amardiscord.sqlite` is created in the `/app/data` directory of the container. This is why it is necessary to have the bind mount in read-write mode at first.
+
+On successive runs, `amardiscord` won't write anything else to the filesystem, so the directory can be freely mounted in read-only mode.
