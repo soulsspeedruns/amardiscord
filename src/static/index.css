@@ -54,6 +54,7 @@ body {
   line-height: 1.2; /* Improves readability */
   min-height: 100%; /* Ensures at least full viewport height */
   overflow-x: hidden; /* Hides horizontal scrollbar if not needed */
+  text-size-adjust: 100%;
 }
 
 a {
@@ -62,11 +63,20 @@ a {
 
 #search-bar {
   width: 100%;
-  height: 3em;  /* TODO: Turn into constant */
+  height: 3em;
   display: flex;
-  justify-content: right;
+  justify-content: space-between;
   align-items: center;
   padding-right: 1em;
+}
+
+#search-bar > button {
+  padding: 0.5em 1.5em;
+  border: 2px transparent;
+  border-radius: 0.5em;
+  background-color: var(--color-bg);
+  color: var(--color-primary-text);
+  cursor: pointer;
 }
 
 #search-bar > input {
@@ -98,7 +108,16 @@ a {
   margin-left: 25%; /* Content starts after the channels div */
   padding: 1em; /* Spacing inside the content */
   height: calc(100vh - 3em); /* Full height */
-  overflow-y: auto; /* Enable scrolling for overflow content */
+  overflow-y: auto;
+  overflow-x: clip;
+  transition: margin-left 0.3s, width 0.3s;
+  width: 100vw;
+  position: fixed;
+  background-color: var(--color-bg);
+}
+
+body:not(.menu-open) #content {
+  margin-left: 0%;
 }
 
 /* Style the list elements */
@@ -118,12 +137,16 @@ h2 {
 
 /* Responsive design */
 @media (max-width: 768px) {
-  #channels,
+  #channels {
+    width: 70%;
+  }
+
   #content {
-    float: none;
-    width: auto;
-    margin-left: 0;
-    height: auto;
+    margin-left: 70%;
+  }
+
+  body:not(.menu-open) #content {
+    margin-left: 0%;
   }
 }
 
