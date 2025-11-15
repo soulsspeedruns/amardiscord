@@ -1,8 +1,8 @@
 .DS_Store
 /target
 data
-data.tgz
-amardiscord.sqlite
-amardiscord.tar.gz
-amardiscord-data.tar.gz
-amardiscord-data.zip
+*.sqlite
+*.zip
+*.tar
+*.tar.gz
+*.tqz
