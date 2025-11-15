@@ -177,10 +177,17 @@ async fn search(
     State(db): State<Arc<Database>>,
     ExtractQuery(query): ExtractQuery<SearchQuery>,
     headers: HeaderMap,
-) -> Result<Html<String>> {
+) -> Result<Response> {
+    if query.is_empty() {
+        // Trigger a refresh if query is empty
+        let mut headers = HeaderMap::new();
+        headers.insert("HX-Refresh", "true".parse().unwrap());
+        return Ok((headers, Html(String::new())).into_response());
+    }
+
     task(move || db.get_search(query).map_err(Error::GetSearch))
         .await
         .map(|search_results| SearchTemplate::render(&search_results))
         .map(|content| wrap_partial(&headers, content))
-        .map(Html)
+        .map(|content| Html(content).into_response())
 }
