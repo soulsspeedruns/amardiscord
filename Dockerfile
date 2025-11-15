@@ -1,23 +1,28 @@
-FROM rust:alpine AS build
-
-RUN apk add --no-cache build-base sqlite-dev
+FROM rust:alpine AS chef
 WORKDIR /app
 
-# Create blank project, so we can fetch dependencies in a separate layer before the actual build step
-RUN cargo init --bin
+RUN apk add --no-cache build-base sqlite-dev
+RUN cargo install cargo-chef 
 
-COPY Cargo.toml .
-COPY Cargo.lock .
-RUN cargo build --release --locked
+FROM chef AS planner
+COPY . .
+RUN cargo chef prepare  --recipe-path recipe.json
 
-# Copy the rest of the source files, and build again
+FROM chef AS builder
+WORKDIR /app
+
+# Copy the recipe over to the build layer and build the dependencies only (will be cached)
+COPY --from=planner /app/recipe.json recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+
+# Copy the rest of the source files, and build the actual app
 COPY src src
 COPY templates templates
 RUN cargo build --release --locked
 
 FROM alpine:latest
-
 WORKDIR /app
-COPY --from=build /app/target/release/amardiscord /app/amardiscord
+
+COPY --from=builder /app/target/release/amardiscord amardiscord
 
 ENTRYPOINT ["/app/amardiscord", "./data"]
