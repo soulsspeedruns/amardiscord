@@ -29,6 +29,10 @@ jobs:
         run: |
           cargo +nightly clippy --all-targets -- -D clippy::all
 
+      - name: Rust Tests
+        run: |
+          cargo test -- --nocapture
+
       - name: Biome Format
         run: |
           biome format --error-on-warnings --indent-style=space src/static/index.js

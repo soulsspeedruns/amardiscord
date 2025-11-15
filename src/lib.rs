@@ -76,7 +76,7 @@ impl<'de> Deserialize<'de> for MessageContent {
     where
         D: serde::Deserializer<'de>,
     {
-        static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"&lt;(a?):(\w+):(\d+)&gt;").unwrap());
+        static RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"&#60;(a?):(\w+):(\d+)&#62;").unwrap());
 
         let input = String::deserialize(deserializer)?;
         let mut escaped = String::new();
@@ -88,7 +88,7 @@ impl<'de> Deserialize<'de> for MessageContent {
                 let emote_name = &captures[2];
                 let emote_id = &captures[3];
                 format!(
-                    r#"<img class="e" alt="{emote_name}" src="https://cdn.discordapp.com/emojis/{emote_id}.{ext}"/>"#,
+                    r#"<img class="emote" alt="{emote_name}" src="https://cdn.discordapp.com/emojis/{emote_id}.{ext}"/>"#,
                 )
             })
             .into_owned(),
@@ -122,4 +122,21 @@ pub enum ScrollDirection {
     Both,
     #[default]
     Unspecified,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_deserialize_with_emotes() {
+        let message_content: MessageContent =
+            serde_json::from_str(r#""FrankerZ looks like <:FrankerZ:245226326636757002>""#)
+                .expect("Couldn't deserialize message content");
+
+        assert_eq!(
+            message_content.0,
+            r#"FrankerZ looks like <img class="emote" alt="FrankerZ" src="https://cdn.discordapp.com/emojis/245226326636757002.png"/>"#
+        );
+    }
 }
