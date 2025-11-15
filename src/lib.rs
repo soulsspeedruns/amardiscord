@@ -88,7 +88,7 @@ impl<'de> Deserialize<'de> for MessageContent {
                 let emote_name = &captures[2];
                 let emote_id = &captures[3];
                 format!(
-                    r#"<img class="e" alt="{emote_name}" src="https://cdn.discordapp.com/emojis/{emote_id}.{ext}"/>"#,
+                    r#"<img class="emote" alt="{emote_name}" src="https://cdn.discordapp.com/emojis/{emote_id}.{ext}"/>"#,
                 )
             })
             .into_owned(),
@@ -136,7 +136,7 @@ mod tests {
 
         assert_eq!(
             message_content.0,
-            r#"FrankerZ looks like <img class="e" alt="FrankerZ" src="https://cdn.discordapp.com/emojis/245226326636757002.png"/>"#
+            r#"FrankerZ looks like <img class="emote" alt="FrankerZ" src="https://cdn.discordapp.com/emojis/245226326636757002.png"/>"#
         );
     }
 }
