@@ -28,6 +28,7 @@ pub struct Category {
 #[derive(Deserialize, Debug)]
 pub struct Channel {
     #[serde(rename = "type")]
+    pub channel_id: u64,
     pub channel_type: u64,
     pub name: String,
     pub messages: Option<Vec<Message>>,

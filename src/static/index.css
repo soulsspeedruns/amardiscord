@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;600&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;600&display=swap");
 
 /* Light Mode Variables */
 :root {
@@ -47,7 +47,11 @@ html {
 
 body {
   margin: 0;
-  font-family: JetBrains Mono, Arial, Helvetica, sans-serif;
+  font-family:
+    JetBrains Mono,
+    Arial,
+    Helvetica,
+    sans-serif;
   font-weight: 300;
   background-color: var(--color-bg);
   color: var(--color-primary-text);
@@ -68,6 +72,7 @@ a {
   justify-content: space-between;
   align-items: center;
   padding-right: 1em;
+  border-bottom: 1px solid var(--color-border);
 }
 
 #search-bar > button {
@@ -102,22 +107,73 @@ a {
   padding: 1em; /* Spacing inside the channels */
   height: calc(100vh - 3em); /* Full height */
   overflow-y: auto; /* Enable scrolling for overflow content */
+  z-index: 10;
 }
 
 #content {
-  margin-left: 25%; /* Content starts after the channels div */
-  padding: 1em; /* Spacing inside the content */
+  --margin: 25%;
+  margin-left: var(--margin); /* Content starts after the channels div */
   height: calc(100vh - 3em); /* Full height */
   overflow-y: auto;
   overflow-x: clip;
-  transition: margin-left 0.3s, width 0.3s;
-  width: 100vw;
+  transition:
+    margin-left 0.3s,
+    width 0.3s;
+  width: calc(100vw - var(--margin));
   position: fixed;
   background-color: var(--color-bg);
 }
 
 body:not(.menu-open) #content {
-  margin-left: 0%;
+  --margin: 0%;
+}
+
+body:not(.menu-open) #blocker {
+  --margin: 0%;
+}
+
+body:not(.menu-open) #bars-3 {
+  display: block;
+}
+
+body:not(.menu-open) #x-mark {
+  display: none;
+}
+
+body.menu-open #bars-3 {
+  display: none;
+}
+
+body.menu-open #x-mark {
+  display: block;
+}
+
+body.menu-open #blocker {
+  pointer-events: auto;
+  opacity: 1;
+}
+
+#blocker {
+  display: none;
+  pointer-events: none;
+  opacity: 0;
+  margin-left: 25%; /* Content starts after the channels div */
+  padding: 1em; /* Spacing inside the content */
+  height: calc(100vh - 3em); /* Full height */
+  overflow-y: auto;
+  overflow-x: clip;
+  transition:
+    opacity 0.3s,
+    margin-left 0.3s,
+    width 0.3s;
+  width: 100vw;
+  position: fixed;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+#burger svg {
+  width: 24px;
+  height: 24px;
 }
 
 /* Style the list elements */
@@ -142,11 +198,33 @@ h2 {
   }
 
   #content {
+    width: 100vw; /* don't resize content on mobile */
     margin-left: 70%;
+  }
+
+  #blocker {
+    margin-left: 70%;
+    display: block;
+  }
+
+  #search-bar h2 {
+    display: none;
+  }
+
+  #search-bar input {
+    width: 100%;
   }
 
   body:not(.menu-open) #content {
     margin-left: 0%;
+  }
+
+  body:not(.menu-open) #blocker {
+    margin-left: 0%;
+  }
+
+  body.menu-open #content {
+    overflow: hidden;
   }
 }
 
@@ -207,7 +285,8 @@ span.time {
   position: relative;
 }
 
-span.avatar {
+span.avatar,
+.avatar-backup {
   width: 40px;
   height: 40px;
   text-align: center;
@@ -220,6 +299,18 @@ span.avatar {
 span.avatar img {
   border-radius: 9999px;
   height: 100%;
+}
+
+.avatar-backup {
+  display: none;
+}
+
+.avatar-backup svg {
+  transform: scale(1.1);
+}
+
+span.avatar:has(img.avatar-error) ~ .avatar-backup {
+  display: block;
 }
 
 #content ul li {
@@ -274,22 +365,27 @@ li.username:hover .jump-btn {
 }
 
 /* Update message styles */
+.messages,
 .messages-container {
-  margin-bottom: 1em;
-  border-left: 1px solid var(--color-accent3);
-  padding-left: 0.5em;
-  transition: border-color 0.2s ease;
+  padding: 0.25em 0.5em;
+}
+
+.messages-container {
+  border-left: 2px solid var(--color-accent3);
 }
 
 .messages-container:hover {
   border-left-color: var(--color-accent5);
-  background-color: color-mix(in srgb, var(--color-accent5) 10%, var(--color-bg));
+  background-color: color-mix(
+    in srgb,
+    var(--color-accent5) 10%,
+    var(--color-bg)
+  );
 }
 
 /* Update message content style */
 .msg {
   color: var(--color-primary-text);
-  margin-left: 0.5em;
 }
 
 .copy-link-btn {
@@ -305,31 +401,48 @@ li.username:hover .jump-btn {
 }
 
 .copy-link-btn:hover {
-  background-color: color-mix(in srgb, var(--color-accent5) 10%, var(--color-bg));
+  background-color: color-mix(
+    in srgb,
+    var(--color-accent5) 10%,
+    var(--color-bg)
+  );
 }
 
+.copy-link-btn.copied,
 li.username:hover .copy-link-btn {
   display: inline;
 }
 
 #target-message {
   border-left: 3px solid var(--color-accent5);
-  background-color: color-mix(in srgb, var(--color-accent5) 15%, var(--color-bg));
+  background-color: color-mix(
+    in srgb,
+    var(--color-accent5) 15%,
+    var(--color-bg)
+  );
   animation: highlight-fade 2s ease-out;
 }
 
 @keyframes highlight-fade {
   0% {
-    background-color: color-mix(in srgb, var(--color-accent5) 30%, var(--color-bg));
+    background-color: color-mix(
+      in srgb,
+      var(--color-accent5) 30%,
+      var(--color-bg)
+    );
   }
   100% {
-    background-color: color-mix(in srgb, var(--color-accent5) 15%, var(--color-bg));
+    background-color: color-mix(
+      in srgb,
+      var(--color-accent5) 15%,
+      var(--color-bg)
+    );
   }
 }
 
 /* Style for the active navigation link in the channel list */
 nav ul li a.active {
-  background-color: #4A5568; /* A pleasant dark gray - adjust to your theme */
+  background-color: #4a5568; /* A pleasant dark gray - adjust to your theme */
   color: white; /* Ensure text is readable on the new background */
   font-weight: bold;
   border-radius: 4px; /* Optional: for rounded corners */

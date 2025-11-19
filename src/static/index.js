@@ -1,110 +1,134 @@
 (() => {
-  htmx.config.scrollBehavior = "auto";
+	htmx.config.scrollBehavior = "auto";
 
-  window.copyMessageLink = (messageId) => {
-    const url = `${window.location.origin}/message/${messageId}`;
-    navigator.clipboard.writeText(url);
-  };
+	window.copyMessageLink = (el, messageId) => {
+		const url = `${window.location.origin}/message/${messageId}`;
+		navigator.clipboard.writeText(url);
 
-  let scrollContainer = null;
-  let originalScrollHeight = 0;
-  let originalScrollTop = 0;
-  let isProcessingOlderMessagesLoad = false;
+		const previousContent = el.innerHTML;
+		el.classList.add("copied");
+		el.innerText = "Copied!";
+		setTimeout(() => {
+			el.innerHTML = previousContent;
+			el.classList.remove("copied");
+		}, 1000);
+	};
 
-  function getScrollContainer() {
-    if (!scrollContainer) {
-      scrollContainer = document.querySelector("#content");
-    }
-    return scrollContainer;
-  }
+	window.onAvatarError = (imgEl) => {
+		imgEl.onerror = "";
+		imgEl.classList.add("avatar-error");
+	};
 
-  document.body.addEventListener("htmx:configRequest", (evt) => {
-    const currentScrollContainer = getScrollContainer();
-    if (!currentScrollContainer) return;
+	let scrollContainer = null;
+	let originalScrollHeight = 0;
+	let originalScrollTop = 0;
+	let isProcessingOlderMessagesLoad = false;
 
-    if (
-      evt.detail.path.includes("?direction=up") &&
-      evt.detail.triggeringEvent?.type === "intersect"
-    ) {
-      originalScrollHeight = currentScrollContainer.scrollHeight;
-      originalScrollTop = currentScrollContainer.scrollTop;
-      isProcessingOlderMessagesLoad = true;
-    }
-  });
+	function getScrollContainer() {
+		if (!scrollContainer) {
+			scrollContainer = document.querySelector("#content");
+		}
+		return scrollContainer;
+	}
 
-  document.body.addEventListener("htmx:afterSwap", (evt) => {
-    const currentScrollContainer = getScrollContainer();
+	document.body.addEventListener("htmx:configRequest", (evt) => {
+		const currentScrollContainer = getScrollContainer();
+		if (!currentScrollContainer) return;
 
-    if (
-      isProcessingOlderMessagesLoad &&
-      currentScrollContainer &&
-      (evt.detail.requestConfig.path ?? "").includes("?direction=up")
-    ) {
-      const newScrollHeight = currentScrollContainer.scrollHeight;
-      const addedHeight = newScrollHeight - originalScrollHeight;
+		if (
+			evt.detail.path.includes("?direction=up") &&
+			evt.detail.triggeringEvent?.type === "intersect"
+		) {
+			originalScrollHeight = currentScrollContainer.scrollHeight;
+			originalScrollTop = currentScrollContainer.scrollTop;
+			isProcessingOlderMessagesLoad = true;
+		}
+	});
 
-      if (addedHeight > 0) {
-        currentScrollContainer.scrollTop = originalScrollTop + addedHeight;
-      }
-      isProcessingOlderMessagesLoad = false;
-    }
+	document.body.addEventListener("htmx:afterSwap", (evt) => {
+		const currentScrollContainer = getScrollContainer();
 
-    const headerChannelId = evt.detail.xhr.getResponseHeader(
-      "X-Current-Channel-Id",
-    );
-    const channelsElement = document.getElementById("channels");
+		if (
+			isProcessingOlderMessagesLoad &&
+			currentScrollContainer &&
+			(evt.detail.requestConfig.path ?? "").includes("?direction=up")
+		) {
+			const newScrollHeight = currentScrollContainer.scrollHeight;
+			const addedHeight = newScrollHeight - originalScrollHeight;
 
-    if (headerChannelId && channelsElement) {
-      const requestPath = evt.detail.requestConfig.path;
-      const isChannelListUpdateRequest = requestPath.startsWith("/channels");
+			if (addedHeight > 0) {
+				currentScrollContainer.scrollTop = originalScrollTop + addedHeight;
+			}
+			isProcessingOlderMessagesLoad = false;
+		}
 
-      if (!isChannelListUpdateRequest) {
-        channelsElement.setAttribute(
-          "hx-get",
-          `/channels?current_channel_id=${headerChannelId}`,
-        );
-        htmx.process(channelsElement);
-        htmx.trigger(channelsElement, "load", { isChannelUpdate: true });
-      }
-    }
-  });
+		const headerChannelId = evt.detail.xhr.getResponseHeader(
+			"X-Current-Channel-Id",
+		);
+		const channelsElement = document.getElementById("channels");
 
-  document.body.addEventListener("htmx:afterSettle", (evt) => {
-    const currentScrollContainer = getScrollContainer();
-    if (!currentScrollContainer) return;
+		if (headerChannelId && channelsElement) {
+			const requestPath = evt.detail.requestConfig.path;
+			const isChannelListUpdateRequest = requestPath.startsWith("/channels");
 
-    const targetMessage = document.getElementById("target-message");
+			if (!isChannelListUpdateRequest) {
+				channelsElement.setAttribute(
+					"hx-get",
+					`/channels?current_channel_id=${headerChannelId}`,
+				);
+				htmx.process(channelsElement);
+				htmx.trigger(channelsElement, "load", { isChannelUpdate: true });
+			}
+		}
+	});
 
-    if (
-      targetMessage &&
-      !targetMessage.hasAttribute("data-scrolled") &&
-      currentScrollContainer.contains(targetMessage)
-    ) {
-      targetMessage.scrollIntoView({ behavior: "smooth", block: "start" });
-      targetMessage.setAttribute("data-scrolled", "true");
-      return;
-    }
+	document.body.addEventListener("htmx:afterSettle", (evt) => {
+		const currentScrollContainer = getScrollContainer();
+		if (!currentScrollContainer) return;
 
-    if (targetMessage || evt.detail.target?.id !== "content") return;
+		const targetMessage = document.getElementById("target-message");
 
-    const requestUrl =
-      evt.detail.xhr.responseURL || evt.detail.requestConfig?.path;
-    if (!requestUrl) return;
+		if (
+			targetMessage &&
+			!targetMessage.hasAttribute("data-scrolled") &&
+			currentScrollContainer.contains(targetMessage)
+		) {
+			targetMessage.scrollIntoView({ behavior: "smooth", block: "start" });
+			targetMessage.setAttribute("data-scrolled", "true");
+			return;
+		}
 
-    const channelPageMatch = requestUrl.match(/\/channel\/\d+\/(\d+)/);
-    if (!channelPageMatch) return;
+		if (targetMessage || evt.detail.target?.id !== "content") return;
 
-    const pageNum = Number.parseInt(channelPageMatch[1], 10);
-    if (
-      pageNum === 0 &&
-      !requestUrl.includes("direction=") &&
-      !evt.detail.requestConfig?.triggeringEvent?.detail?.isChannelUpdate
-    ) {
-      currentScrollContainer.scrollTop = currentScrollContainer.scrollHeight;
-    }
-  });
+		const requestUrl =
+			evt.detail.xhr.responseURL || evt.detail.requestConfig?.path;
+		if (!requestUrl) return;
 
-  document.querySelector("button#burger").addEventListener("click", (_evt) => {
-    document.body.classList.toggle("menu-open");
-  });
+		const channelPageMatch = requestUrl.match(/\/channel\/\d+\/(\d+)/);
+		if (!channelPageMatch) return;
+
+		const pageNum = Number.parseInt(channelPageMatch[1], 10);
+		if (
+			pageNum === 0 &&
+			!requestUrl.includes("direction=") &&
+			!evt.detail.requestConfig?.triggeringEvent?.detail?.isChannelUpdate
+		) {
+			currentScrollContainer.scrollTop = currentScrollContainer.scrollHeight;
+		}
+	});
+
+
+	document.querySelector("button#burger").addEventListener("click", (_evt) => {
+		document.body.classList.toggle("menu-open");
+	});
+
+	document.querySelector("#blocker").addEventListener("click", (_evt) => {
+		document.body.classList.remove("menu-open");
+	});
+
+	document.addEventListener("keydown", (evt) => {
+		if (evt.key === "Escape") {
+			document.body.classList.remove("menu-open");
+		}
+	});
 })();

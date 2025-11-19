@@ -33,6 +33,8 @@ pub enum Error {
     GoToMessage(db::Error),
     #[error("retrieving search results")]
     GetSearch(db::Error),
+    #[error("retrieving channel")]
+    GetChannel(db::Error),
 }
 
 impl IntoResponse for Error {
@@ -99,11 +101,11 @@ where
     }
 }
 
-fn wrap_partial(headers: &HeaderMap, content: String) -> String {
+fn wrap_partial(headers: &HeaderMap, title: String, content: String) -> String {
     if headers.get("HX-Request").is_some() {
         content
     } else {
-        LayoutTemplate::render(&content)
+        LayoutTemplate::render(&title, &content)
     }
 }
 
@@ -121,7 +123,7 @@ async fn channel_list(
     task(move || db.get_channel_list().map_err(Error::GetChannelList))
         .await
         .map(|channel_list| ChannelListTemplate::render(&channel_list, query.current_channel_id))
-        .map(|content| wrap_partial(&headers, content))
+        .map(|content| wrap_partial(&headers, "channel_list".to_string(), content))
         .map(Html)
 }
 
@@ -137,12 +139,24 @@ async fn channel(
     ExtractQuery(page_query): ExtractQuery<PageQuery>,
     headers: HeaderMap,
 ) -> Result<Response> {
+    // first get the channel
+    let db1 = db.clone();
+    let channel = task(move || db1.get_channel(channel_id).map_err(Error::GetChannel)).await?;
+    let channel_name = channel.name.clone();
+
     task(move || db.get_page(channel_id, page).map_err(Error::GetPage))
         .await
         .map(|messages| {
-            MessagePageTemplate::render(&messages, channel_id, page, page_query.direction, None)
+            MessagePageTemplate::render(
+                &messages,
+                channel_id,
+                channel_name.clone(),
+                page,
+                page_query.direction,
+                None,
+            )
         })
-        .map(|content| wrap_partial(&headers, content))
+        .map(|content| wrap_partial(&headers, channel_name, content))
         .map(|content| with_channel_id(channel_id, content))
 }
 
@@ -152,24 +166,29 @@ async fn message_page(
     headers: HeaderMap,
 ) -> Result<Response> {
     task(move || {
-        let (channel_id, page) = db.go_to_message(rowid).map_err(Error::GoToMessage)?;
+        let (channel_id, channel_name, page) =
+            db.go_to_message(rowid).map_err(Error::GoToMessage)?;
         let messages = db.get_page(channel_id, page).map_err(Error::GetPage)?;
-        Ok::<_, Error>((channel_id, page, messages))
+        Ok::<_, Error>((channel_id, channel_name, page, messages))
     })
     .await
-    .map(|(channel_id, page, messages)| {
+    .map(|(channel_id, channel_name, page, messages)| {
         (
             channel_id,
+            channel_name.clone(),
             MessagePageTemplate::render(
                 &messages,
                 channel_id,
+                channel_name.clone(),
                 page,
                 ScrollDirection::Both,
                 Some(rowid),
             ),
         )
     })
-    .map(|(channel_id, content)| (channel_id, wrap_partial(&headers, content)))
+    .map(|(channel_id, channel_name, content)| {
+        (channel_id, wrap_partial(&headers, channel_name, content))
+    })
     .map(|(channel_id, content)| with_channel_id(channel_id, content))
 }
 
@@ -188,6 +207,6 @@ async fn search(
     task(move || db.get_search(query).map_err(Error::GetSearch))
         .await
         .map(|search_results| SearchTemplate::render(&search_results))
-        .map(|content| wrap_partial(&headers, content))
+        .map(|content| wrap_partial(&headers, "Search".to_string(), content))
         .map(|content| Html(content).into_response())
 }
