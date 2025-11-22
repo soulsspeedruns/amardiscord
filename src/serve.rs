@@ -139,25 +139,28 @@ async fn channel(
     ExtractQuery(page_query): ExtractQuery<PageQuery>,
     headers: HeaderMap,
 ) -> Result<Response> {
-    // first get the channel
-    let db1 = db.clone();
-    let channel = task(move || db1.get_channel(channel_id).map_err(Error::GetChannel)).await?;
-    let channel_name = channel.name.clone();
-
-    task(move || db.get_page(channel_id, page).map_err(Error::GetPage))
-        .await
-        .map(|messages| {
+    task(move || {
+        // first get the channel
+        let channel = db.get_channel(channel_id).map_err(Error::GetChannel)?;
+        let messages = db.get_page(channel_id, page).map_err(Error::GetPage)?;
+        Ok::<_, Error>((channel.name, messages))
+    })
+    .await
+    .map(|(channel_name, messages)| {
+        (
+            channel_name.clone(),
             MessagePageTemplate::render(
                 &messages,
                 channel_id,
-                channel_name.clone(),
+                channel_name,
                 page,
                 page_query.direction,
                 None,
-            )
-        })
-        .map(|content| wrap_partial(&headers, channel_name, content))
-        .map(|content| with_channel_id(channel_id, content))
+            ),
+        )
+    })
+    .map(|(channel_name, content)| wrap_partial(&headers, channel_name, content))
+    .map(|content| with_channel_id(channel_id, content))
 }
 
 async fn message_page(

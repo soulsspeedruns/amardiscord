@@ -27,8 +27,9 @@ pub struct Category {
 
 #[derive(Deserialize, Debug)]
 pub struct Channel {
-    #[serde(rename = "type")]
+    #[serde(skip)]
     pub channel_id: u64,
+    #[serde(rename = "type")]
     pub channel_type: u64,
     pub name: String,
     pub messages: Option<Vec<Message>>,

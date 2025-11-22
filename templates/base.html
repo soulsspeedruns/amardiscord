@@ -20,7 +20,7 @@
 		  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
 		</svg>
       </button>
-	  <div><h2 id="page-title">{%block title %}{% endblock %}</h2></div>
+	  <div><h2 id="page-title">{% block title %}{% endblock %}</h2></div>
       <input type="search" name="content" placeholder="Start typing to search..."
             hx-get="/search" hx-trigger="input changed delay:500ms, query"
             hx-target="#content" hx-swap="innerHTML show:bottom">

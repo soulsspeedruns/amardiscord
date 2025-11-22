@@ -58,7 +58,7 @@ pub struct MessagePageTemplate<'a> {
 }
 
 impl MessagePageTemplate<'_> {
-    pub fn render<'a>(
+    pub fn render(
         messages: &[Message],
         channel_id: u64,
         channel_name: String,
