@@ -167,16 +167,40 @@ impl Database {
         Ok(())
     }
 
-    pub fn go_to_message(&self, message_rowid: u64) -> Result<(u64, u64), Error> {
+    pub fn get_channel(&self, channel_id: u64) -> Result<Channel, Error> {
+        let db = self.0.get()?;
+
+        let mut stmt = db.prepare(
+            r#"
+            SELECT channel_id, channel_type, name
+            FROM channels
+            WHERE channels.channel_id = ?1
+            "#,
+        )?;
+
+        let channel = stmt.query_row([channel_id], |row| {
+            Ok(Channel {
+                channel_id: row.get(0)?,
+                channel_type: row.get(1)?,
+                name: row.get(2)?,
+                messages: None,
+            })
+        })?;
+
+        Ok(channel)
+    }
+
+    pub fn go_to_message(&self, message_rowid: u64) -> Result<(u64, String, u64), Error> {
         let db = self.0.get()?;
 
         Ok(db.query_row(
             r#"
-            SELECT channel_id, page FROM messages_pages
-            WHERE messages_rowid = ?1
+            SELECT p.channel_id, c.name, p.page FROM messages_pages as p
+            JOIN channels as c ON c.channel_id = p.channel_id
+            WHERE p.messages_rowid = ?1
             "#,
             [message_rowid],
-            |row| Ok((row.get(0)?, row.get(1)?)),
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
         )?)
     }
 
