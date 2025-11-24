@@ -17,12 +17,13 @@ impl IndexTemplate {
 #[derive(Template)]
 #[template(path = "layout.html")]
 pub struct LayoutTemplate<'a> {
+    title: &'a str,
     content: &'a str,
 }
 
 impl<'a> LayoutTemplate<'a> {
-    pub fn render(content: &'a str) -> String {
-        Self { content }.render().unwrap_or_else(|e| e.to_string())
+    pub fn render(title: &'a str, content: &'a str) -> String {
+        Self { title, content }.render().unwrap_or_else(|e| e.to_string())
     }
 }
 
@@ -51,6 +52,7 @@ struct MessageGroup<'a> {
 pub struct MessagePageTemplate<'a> {
     message_groups: Vec<MessageGroup<'a>>,
     channel_id: u64,
+    channel_name: String,
     page: u64,
     direction: ScrollDirection,
 }
@@ -59,6 +61,7 @@ impl MessagePageTemplate<'_> {
     pub fn render(
         messages: &[Message],
         channel_id: u64,
+        channel_name: String,
         page: u64,
         direction: ScrollDirection,
         target_message_id: Option<u64>,
@@ -83,7 +86,7 @@ impl MessagePageTemplate<'_> {
                 })
                 .collect();
 
-            MessagePageTemplate { message_groups, channel_id, page, direction }
+            MessagePageTemplate { message_groups, channel_id, channel_name, page, direction }
                 .render()
                 .unwrap_or_else(|e| e.to_string())
         }

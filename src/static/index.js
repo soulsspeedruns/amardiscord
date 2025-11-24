@@ -1,9 +1,22 @@
 (() => {
   htmx.config.scrollBehavior = "auto";
 
-  window.copyMessageLink = (messageId) => {
+  window.copyMessageLink = (el, messageId) => {
     const url = `${window.location.origin}/message/${messageId}`;
     navigator.clipboard.writeText(url);
+
+    const previousContent = el.innerHTML;
+    el.classList.add("copied");
+    el.innerText = "Copied!";
+    setTimeout(() => {
+      el.innerHTML = previousContent;
+      el.classList.remove("copied");
+    }, 1000);
+  };
+
+  window.onAvatarError = (imgEl) => {
+    imgEl.onerror = "";
+    imgEl.classList.add("avatar-error");
   };
 
   let scrollContainer = null;
@@ -106,5 +119,15 @@
 
   document.querySelector("button#burger").addEventListener("click", (_evt) => {
     document.body.classList.toggle("menu-open");
+  });
+
+  document.querySelector("#blocker").addEventListener("click", (_evt) => {
+    document.body.classList.remove("menu-open");
+  });
+
+  document.addEventListener("keydown", (evt) => {
+    if (evt.key === "Escape") {
+      document.body.classList.remove("menu-open");
+    }
   });
 })();
